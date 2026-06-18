@@ -171,6 +171,11 @@ export function useStore() {
     })
   }, [])
 
+  const applyImport = useCallback(({ palettes, semanticTokens }) => {
+    if (palettes)       setColorPalettes(palettes)
+    if (semanticTokens) setSemanticColorTokens(semanticTokens)
+  }, [])
+
   const exportProject = useCallback(() => {
     return { colorPalettes, semanticColorTokens, typography, spacing, shapes, vocabulary }
   }, [colorPalettes, semanticColorTokens, typography, spacing, shapes, vocabulary])
@@ -188,6 +193,6 @@ export function useStore() {
     colorPalettes, semanticColorTokens, typography, spacing, shapes, vocabulary,
     updatePaletteBaseColor, updatePaletteStep, addPalette, removePalette,
     updateSemanticToken, setTypography, setSpacing, setShapes, updateVocabulary,
-    exportProject, importProject,
+    applyImport, exportProject, importProject,
   }
 }

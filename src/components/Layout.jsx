@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import clsx from 'clsx'
 import { Palette, Type, Ruler, Square, Download, Upload, FileJson, FileText, Eye, Sliders } from 'lucide-react'
 import { buildTokensJson, buildDesignMd, downloadFile } from '../lib/exportUtils'
+import ImportWizard from './ImportWizard'
 
 const NAV_ITEMS = [
   { id: 'color',      label: 'Color',      icon: Palette },
@@ -12,6 +14,8 @@ const NAV_ITEMS = [
 ]
 
 export default function Layout({ section, onSectionChange, store, children }) {
+  const [showImport, setShowImport] = useState(false)
+
   function handleExportJson() {
     const tokens = buildTokensJson(store)
     downloadFile(JSON.stringify(tokens, null, 2), 'tokens.json', 'application/json')
@@ -77,7 +81,7 @@ export default function Layout({ section, onSectionChange, store, children }) {
           ))}
         </nav>
 
-        {/* Export actions */}
+        {/* Export / project actions */}
         <div className="px-3 pb-4 border-t border-white/[0.08] pt-4 space-y-1">
           <div className="px-3 pb-1 text-[10px] font-semibold tracking-widest text-white/20 uppercase">Export</div>
           <button
@@ -94,6 +98,7 @@ export default function Layout({ section, onSectionChange, store, children }) {
             <FileJson size={16} className="flex-shrink-0" />
             tokens.json
           </button>
+
           <div className="px-3 pb-1 pt-2 text-[10px] font-semibold tracking-widest text-white/20 uppercase">Project</div>
           <button
             onClick={handleExportProject}
@@ -109,6 +114,13 @@ export default function Layout({ section, onSectionChange, store, children }) {
             <Upload size={16} className="flex-shrink-0" />
             Load project
           </button>
+          <button
+            onClick={() => setShowImport(true)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/40 hover:text-white/70 hover:bg-white/5 transition-all"
+          >
+            <FileJson size={16} className="flex-shrink-0" />
+            Import tokens.json
+          </button>
         </div>
       </aside>
 
@@ -116,6 +128,19 @@ export default function Layout({ section, onSectionChange, store, children }) {
       <main className="flex-1 overflow-y-auto">
         {children}
       </main>
+
+      {/* Import wizard */}
+      {showImport && (
+        <ImportWizard
+          existingPalettes={store.colorPalettes}
+          existingSemanticTokens={store.semanticColorTokens}
+          onApply={({ palettes, semanticTokens }) => {
+            store.applyImport({ palettes, semanticTokens })
+            setShowImport(false)
+          }}
+          onClose={() => setShowImport(false)}
+        />
+      )}
     </div>
   )
 }
