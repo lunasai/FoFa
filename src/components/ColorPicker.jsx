@@ -182,8 +182,20 @@ export function ColorPicker({ value, onChange }) {
 
 export function ColorPickerPopover({ value, onChange, children }) {
   const [open, setOpen] = useState(false)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
   const popoverRef = useRef(null)
   const triggerRef = useRef(null)
+
+  function handleOpen() {
+    if (open) { setOpen(false); return }
+    const rect = triggerRef.current?.getBoundingClientRect()
+    if (rect) {
+      const top = rect.bottom + window.scrollY + 6
+      const left = Math.min(rect.left + window.scrollX, window.innerWidth - 240)
+      setPos({ top, left })
+    }
+    setOpen(true)
+  }
 
   useEffect(() => {
     if (!open) return
@@ -197,15 +209,15 @@ export function ColorPickerPopover({ value, onChange, children }) {
   }, [open])
 
   return (
-    <div className="relative inline-block">
-      <div ref={triggerRef} onClick={() => setOpen(v => !v)}>
+    <div className="inline-block">
+      <div ref={triggerRef} onClick={handleOpen} style={{ cursor: 'pointer' }}>
         {children}
       </div>
       {open && (
         <div
           ref={popoverRef}
-          className="absolute z-50 mt-2 rounded-xl border border-white/10 shadow-2xl overflow-hidden"
-          style={{ background: '#1a1a1a', top: '100%', left: 0 }}
+          className="rounded-xl border border-white/10 shadow-2xl overflow-hidden"
+          style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999, background: '#1a1a1a' }}
         >
           <ColorPicker value={value} onChange={onChange} />
         </div>
