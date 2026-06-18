@@ -1,7 +1,8 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import clsx from 'clsx'
 import { SCALE_STEPS, isValidHex, getContrastColor, resolveSemanticColor } from '../lib/colorUtils'
+import { ColorPickerPopover } from '../components/ColorPicker'
 
 function HexInput({ value, onChange }) {
   const [draft, setDraft] = useState(value)
@@ -39,32 +40,24 @@ function HexInput({ value, onChange }) {
 }
 
 function ColorSwatch({ hex, step, onChange, size = 'md' }) {
-  const inputRef = useRef()
   const contrast = getContrastColor(hex)
-
   const heights = { sm: 'h-10', md: 'h-14', lg: 'h-20' }
 
   return (
-    <div
-      className={clsx('relative rounded-lg overflow-hidden group cursor-pointer flex-1', heights[size])}
-      style={{ backgroundColor: hex }}
-      onClick={() => inputRef.current?.click()}
-      title={`${step}: ${hex}`}
-    >
-      <input
-        ref={inputRef}
-        type="color"
-        value={hex}
-        onChange={e => onChange(e.target.value)}
-        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-      />
+    <ColorPickerPopover value={hex} onChange={onChange}>
       <div
-        className="absolute bottom-0 left-0 right-0 px-1 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity text-center"
-        style={{ color: contrast, backgroundColor: `${hex}99` }}
+        className={clsx('relative rounded-lg overflow-hidden group cursor-pointer flex-1', heights[size])}
+        style={{ backgroundColor: hex }}
+        title={`${step}: ${hex}`}
       >
-        <span className="text-[9px] font-mono">{hex}</span>
+        <div
+          className="absolute bottom-0 left-0 right-0 px-1 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity text-center"
+          style={{ color: contrast, backgroundColor: `${hex}99` }}
+        >
+          <span className="text-[9px] font-mono">{hex}</span>
+        </div>
       </div>
-    </div>
+    </ColorPickerPopover>
   )
 }
 
@@ -75,17 +68,12 @@ function PaletteRow({ palette, onBaseColorChange, onStepChange, onRemove, canRem
     <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-4 px-5 py-4">
-        <div
-          className="w-8 h-8 rounded-lg flex-shrink-0 cursor-pointer relative overflow-hidden"
-          style={{ backgroundColor: palette.baseColor }}
-        >
-          <input
-            type="color"
-            value={palette.baseColor}
-            onChange={e => onBaseColorChange(palette.id, e.target.value)}
-            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+        <ColorPickerPopover value={palette.baseColor} onChange={hex => onBaseColorChange(palette.id, hex)}>
+          <div
+            className="w-8 h-8 rounded-lg flex-shrink-0 cursor-pointer"
+            style={{ backgroundColor: palette.baseColor }}
           />
-        </div>
+        </ColorPickerPopover>
         <div className="flex-1">
           <div className="text-sm font-semibold text-white">{palette.name}</div>
           <div className="text-xs text-white/30 font-mono">{palette.baseColor}</div>
