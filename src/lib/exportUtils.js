@@ -1,8 +1,8 @@
-import { resolveSemanticColor } from './colorUtils'
-import { SCALE_STEPS } from './colorUtils'
+import { resolveSemanticColor, SCALE_STEPS } from './colorUtils'
+import { deriveColorTokenName, deriveTypographyTokenName, DEFAULT_VOCABULARY } from './vocabularyUtils'
 
 export function buildTokensJson(store) {
-  const { colorPalettes, semanticColorTokens, typography, spacing, shapes } = store
+  const { colorPalettes, semanticColorTokens, typography, spacing, shapes, vocabulary = DEFAULT_VOCABULARY } = store
   const tokens = {}
 
   // Color primitives
@@ -17,10 +17,11 @@ export function buildTokensJson(store) {
     })
   })
 
-  // Color semantic
+  // Color semantic — keys use derived vocabulary names
   tokens.semantic = { color: {} }
   semanticColorTokens.forEach(token => {
-    const parts = token.id.split('.')
+    const derivedName = deriveColorTokenName(token.concept, vocabulary)
+    const parts = derivedName.split('.')
     let obj = tokens.semantic.color
     parts.forEach((part, i) => {
       if (i === parts.length - 1) {
@@ -98,7 +99,7 @@ export function buildTokensJson(store) {
 }
 
 export function buildDesignMd(store) {
-  const { colorPalettes, semanticColorTokens, typography, spacing, shapes } = store
+  const { colorPalettes, semanticColorTokens, typography, spacing, shapes, vocabulary = DEFAULT_VOCABULARY } = store
   const lines = []
 
   lines.push('# Design System Foundations')
@@ -143,7 +144,8 @@ export function buildDesignMd(store) {
       const palette = colorPalettes.find(p => p.id === token.paletteId)
       const value = token.isWhite ? '#ffffff' : (palette?.scale[token.step] || 'N/A')
       const ref = token.isWhite ? 'white' : `${token.paletteId}.${token.step}`
-      lines.push(`- \`${token.id}\` — \`${value}\` (→ \`${ref}\`) — ${token.description}`)
+      const name = deriveColorTokenName(token.concept, vocabulary)
+      lines.push(`- \`${name}\` — \`${value}\` (→ \`${ref}\`) — ${token.description}`)
     })
     lines.push('')
   })
@@ -169,7 +171,8 @@ export function buildDesignMd(store) {
   typography.semantic.forEach(entry => {
     const scaleEntry = typography.scale.find(s => s.step === entry.step)
     const detail = scaleEntry ? `${scaleEntry.size}px / weight ${scaleEntry.weight}` : entry.step
-    lines.push(`- \`${entry.id}\` — ${detail} (→ \`${entry.step}\`) — ${entry.description}`)
+    const name = deriveTypographyTokenName(entry.concept, vocabulary)
+    lines.push(`- \`${name}\` — ${detail} (→ \`${entry.step}\`) — ${entry.description}`)
   })
   lines.push('')
 

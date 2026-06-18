@@ -3,6 +3,7 @@ import { Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import clsx from 'clsx'
 import { SCALE_STEPS, isValidHex, getContrastColor, resolveSemanticColor } from '../lib/colorUtils'
 import { ColorPickerPopover } from '../components/ColorPicker'
+import { deriveColorTokenName } from '../lib/vocabularyUtils'
 
 function HexInput({ value, onChange }) {
   const [draft, setDraft] = useState(value)
@@ -140,9 +141,10 @@ function PaletteRow({ palette, onBaseColorChange, onStepChange, onRemove, canRem
   )
 }
 
-function SemanticTokenRow({ token, palettes, onUpdate }) {
+function SemanticTokenRow({ token, palettes, vocabulary, onUpdate }) {
   const resolvedValue = resolveSemanticColor(token, palettes)
   const [open, setOpen] = useState(false)
+  const displayName = deriveColorTokenName(token.concept, vocabulary)
 
   return (
     <div className="flex items-center gap-3 py-2.5 border-b border-white/[0.04] last:border-0">
@@ -154,7 +156,7 @@ function SemanticTokenRow({ token, palettes, onUpdate }) {
 
       {/* Token name */}
       <div className="flex-1 min-w-0">
-        <div className="text-xs font-mono text-white/80">{token.id}</div>
+        <div className="text-xs font-mono text-white/80">{displayName}</div>
         <div className="text-[11px] text-white/30 truncate">{token.description}</div>
       </div>
 
@@ -199,7 +201,7 @@ function SemanticTokenRow({ token, palettes, onUpdate }) {
 }
 
 export default function ColorSection({ store }) {
-  const { colorPalettes, semanticColorTokens, updatePaletteBaseColor, updatePaletteStep, addPalette, removePalette, updateSemanticToken } = store
+  const { colorPalettes, semanticColorTokens, vocabulary, updatePaletteBaseColor, updatePaletteStep, addPalette, removePalette, updateSemanticToken } = store
   const [newName, setNewName] = useState('')
   const [newColor, setNewColor] = useState('#6366f1')
   const [showAddForm, setShowAddForm] = useState(false)
@@ -320,6 +322,7 @@ export default function ColorSection({ store }) {
                 <SemanticTokenRow
                   key={token.id}
                   token={token}
+                  vocabulary={vocabulary}
                   palettes={colorPalettes}
                   onUpdate={updateSemanticToken}
                 />

@@ -1,13 +1,14 @@
 import clsx from 'clsx'
-import { Palette, Type, Ruler, Square, Download, Upload, FileJson, FileText, Eye } from 'lucide-react'
+import { Palette, Type, Ruler, Square, Download, Upload, FileJson, FileText, Eye, Sliders } from 'lucide-react'
 import { buildTokensJson, buildDesignMd, downloadFile } from '../lib/exportUtils'
 
 const NAV_ITEMS = [
-  { id: 'color', label: 'Color', icon: Palette },
+  { id: 'color',      label: 'Color',      icon: Palette },
   { id: 'typography', label: 'Typography', icon: Type },
-  { id: 'spacing', label: 'Spacing', icon: Ruler },
-  { id: 'shapes', label: 'Shapes', icon: Square },
-  { id: 'preview', label: 'Preview', icon: Eye },
+  { id: 'spacing',    label: 'Spacing',    icon: Ruler },
+  { id: 'shapes',     label: 'Shapes',     icon: Square },
+  { id: 'semantics',  label: 'Semantics',  icon: Sliders },
+  { id: 'preview',    label: 'Preview',    icon: Eye },
 ]
 
 export default function Layout({ section, onSectionChange, store, children }) {

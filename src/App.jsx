@@ -5,6 +5,7 @@ import TypographySection from './sections/TypographySection.jsx'
 import SpacingSection from './sections/SpacingSection.jsx'
 import ShapesSection from './sections/ShapesSection.jsx'
 import PreviewSection from './sections/PreviewSection.jsx'
+import SemanticsSection from './sections/SemanticsSection.jsx'
 import { useStore } from './store/useStore.js'
 
 export default function App() {
@@ -15,8 +16,9 @@ export default function App() {
     color: <ColorSection store={store} />,
     typography: <TypographySection store={store} />,
     spacing: <SpacingSection store={store} />,
-    shapes: <ShapesSection store={store} />,
-    preview: <PreviewSection store={store} />,
+    shapes:     <ShapesSection store={store} />,
+    semantics:  <SemanticsSection store={store} />,
+    preview:    <PreviewSection store={store} />,
   }
 
   return (
