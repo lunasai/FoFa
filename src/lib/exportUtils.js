@@ -1,35 +1,40 @@
 import { resolveSemanticColor, SCALE_STEPS } from './colorUtils'
-import { deriveColorTokenName, deriveTypographyTokenName, DEFAULT_VOCABULARY } from './vocabularyUtils'
+import { deriveColorTokenName, deriveTypographyTokenName, DEFAULT_VOCABULARY, formatColorStep } from './vocabularyUtils'
 
 export function buildTokensJson(store) {
   const { colorPalettes, semanticColorTokens, typography, spacing, shapes, vocabulary = DEFAULT_VOCABULARY } = store
+  const colorScale = vocabulary?.scales?.color || 'numeric-100'
   const tokens = {}
 
-  // Color primitives
+  // Color primitives — step key format follows colorScale setting
   tokens.color = {}
   colorPalettes.forEach(palette => {
     tokens.color[palette.id] = {}
     SCALE_STEPS.forEach(step => {
-      tokens.color[palette.id][step] = {
+      const key = formatColorStep(step, colorScale)
+      tokens.color[palette.id][key] = {
         $value: palette.scale[step],
         $type: 'color',
       }
     })
   })
 
-  // Color semantic — keys use derived vocabulary names
-  tokens.semantic = { color: {} }
+  // Color semantic — name derived from concept (always color.{category}.{role}[.{state}])
+  // JSON structure: tokens.color.semantic.{category}.{role}[.{state}]
+  tokens.color.semantic = {}
   semanticColorTokens.forEach(token => {
-    const derivedName = deriveColorTokenName(token.concept, vocabulary)
-    const parts = derivedName.split('.')
-    let obj = tokens.semantic.color
+    const derivedName = deriveColorTokenName(token.concept)
+    // derivedName = "color.{category}.{role}[.{state}]" — skip the leading "color." for nesting
+    const parts = derivedName.split('.').slice(1)
+    const refStep = formatColorStep(token.step, colorScale)
+    let obj = tokens.color.semantic
     parts.forEach((part, i) => {
       if (i === parts.length - 1) {
         obj[part] = {
           $value: resolveSemanticColor(token, colorPalettes),
           $type: 'color',
           $description: token.description,
-          $ref: token.isWhite ? '#ffffff' : `{color.${token.paletteId}.${token.step}}`,
+          $ref: token.isWhite ? '#ffffff' : `{color.${token.paletteId}.${refStep}}`,
         }
       } else {
         obj[part] = obj[part] || {}
@@ -100,6 +105,7 @@ export function buildTokensJson(store) {
 
 export function buildDesignMd(store) {
   const { colorPalettes, semanticColorTokens, typography, spacing, shapes, vocabulary = DEFAULT_VOCABULARY } = store
+  const colorScale = vocabulary?.scales?.color || 'numeric-100'
   const lines = []
 
   lines.push('# Design System Foundations')
@@ -120,7 +126,8 @@ export function buildDesignMd(store) {
     lines.push(`#### ${palette.name}`)
     lines.push('')
     SCALE_STEPS.forEach(step => {
-      lines.push(`- \`color.${palette.id}.${step}\` — \`${palette.scale[step]}\``)
+      const key = formatColorStep(step, colorScale)
+      lines.push(`- \`color.${palette.id}.${key}\` — \`${palette.scale[step]}\``)
     })
     lines.push('')
   })
@@ -143,9 +150,10 @@ export function buildDesignMd(store) {
     tokens.forEach(token => {
       const palette = colorPalettes.find(p => p.id === token.paletteId)
       const value = token.isWhite ? '#ffffff' : (palette?.scale[token.step] || 'N/A')
-      const ref = token.isWhite ? 'white' : `${token.paletteId}.${token.step}`
-      const name = deriveColorTokenName(token.concept, vocabulary)
-      lines.push(`- \`${name}\` — \`${value}\` (→ \`${ref}\`) — ${token.description}`)
+      const refStep = formatColorStep(token.step, colorScale)
+      const ref = token.isWhite ? 'white' : `${token.paletteId}.${refStep}`
+      const name = deriveColorTokenName(token.concept)
+      lines.push(`- \`${name}\` — \`${value}\` (→ \`color.${ref}\`) — ${token.description}`)
     })
     lines.push('')
   })

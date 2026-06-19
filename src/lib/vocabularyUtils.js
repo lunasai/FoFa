@@ -1,75 +1,45 @@
-export const CATEGORY_OPTIONS = {
-  background: ['background', 'bg', 'backdrop'],
-  text:       ['text', 'fg', 'foreground', 'copy'],
-  border:     ['border', 'outline', 'stroke', 'ring'],
-  surface:    ['surface', 'layer', 'panel', 'card'],
-  brand:      ['brand', 'accent', 'primary', 'theme'],
+export const COLOR_SCALE_OPTIONS = [
+  { value: 'numeric-100', label: 'Numeric 100s', example: 'color.brand.50 → 500 → 950' },
+  { value: 'linear-12',   label: 'Linear 1–11',  example: 'color.brand.1 → 6 → 11' },
+]
+
+const NUMERIC_TO_LINEAR = {
+  50: 1, 100: 2, 200: 3, 300: 4, 400: 5,
+  500: 6, 600: 7, 700: 8, 800: 9, 900: 10, 950: 11,
 }
 
-export const VARIANT_OPTIONS = {
-  default: ['default', 'base', 'primary', 'DEFAULT'],
-  subtle:  ['subtle', 'muted', 'light', 'soft', 'tint'],
-}
-
-export const SCALE_OPTIONS = {
-  color:      ['descriptive', 'tshirt', 'numeric'],
-  typography: ['tshirt', 'numeric'],
-  shapes:     ['descriptive', 'tshirt', 'numeric'],
-}
-
-export const SCALE_LABELS = {
-  descriptive: 'Descriptive (primary / secondary)',
-  tshirt:      'T-shirt (sm / md / lg / xl)',
-  numeric:     'Numeric (1 / 2 / 3)',
+export function formatColorStep(step, colorScale) {
+  if (colorScale === 'linear-12') return NUMERIC_TO_LINEAR[step] ?? step
+  return step
 }
 
 export const DEFAULT_VOCABULARY = {
-  categories: {
-    background: 'background',
-    text:       'text',
-    border:     'border',
-    surface:    'surface',
-    brand:      'brand',
-  },
-  variants: {
-    default: 'default',
-    subtle:  'subtle',
-  },
   scales: {
-    color:      'descriptive',
+    color:      'numeric-100',
     typography: 'tshirt',
-    shapes:     'descriptive',
+    spacing:    'linear',
+    shapes:     'tshirt',
   },
 }
 
-export function deriveColorTokenName(concept, vocab) {
-  const cat = vocab.categories[concept.category] || concept.category
-
-  let variant
-  if (concept.isScale) {
-    const style = vocab.scales.color
-    if (style === 'numeric')  variant = String(concept.scaleRank)
-    else if (style === 'tshirt') variant = concept.tshirtStep
-    else variant = concept.descriptive
-  } else {
-    if (concept.variant === 'default') variant = vocab.variants.default
-    else if (concept.variant === 'subtle') variant = vocab.variants.subtle
-    else variant = concept.variant
-  }
-
-  return `${cat}.${variant}`
+// Name is fixed structure — vocabulary no longer drives aliases/variants
+export function deriveColorTokenName(concept, _vocab) {
+  const { category, role, state } = concept
+  let name = `color.${category}.${role}`
+  if (state) name += `.${state}`
+  return name
 }
 
 export function deriveTypographyTokenName(concept, vocab) {
   if (!concept.tshirtStep) return concept.role
-  const style = vocab.scales.typography
+  const style = vocab?.scales?.typography || 'tshirt'
   const scale = style === 'numeric' ? String(concept.scaleRank) : concept.tshirtStep
   return `${concept.role}.${scale}`
 }
 
 export function deriveShapeTokenName(concept, vocab) {
   if (!concept.isScale) return concept.role
-  const style = vocab.scales.shapes
+  const style = vocab?.scales?.shapes || 'tshirt'
   if (style === 'numeric') return `${concept.role}.${concept.scaleRank}`
   if (style === 'tshirt')  return `${concept.role}.${concept.tshirtStep}`
   return `${concept.role}.${concept.descriptive}`

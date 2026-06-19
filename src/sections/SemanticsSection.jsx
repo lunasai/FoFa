@@ -1,197 +1,140 @@
 import clsx from 'clsx'
-import {
-  CATEGORY_OPTIONS, VARIANT_OPTIONS, SCALE_OPTIONS, SCALE_LABELS,
-  deriveColorTokenName, deriveTypographyTokenName,
-} from '../lib/vocabularyUtils'
+import { COLOR_SCALE_OPTIONS, formatColorStep } from '../lib/vocabularyUtils'
 import { resolveSemanticColor } from '../lib/colorUtils'
 
-function Select({ value, options, onChange }) {
+function RadioCard({ value, option, onChange }) {
+  const selected = value === option.value
   return (
-    <select
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      className="bg-white/[0.05] border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white font-mono outline-none focus:border-white/30 cursor-pointer"
-    >
-      {options.map(opt => (
-        <option key={opt} value={opt} style={{ background: '#1a1a1a' }}>{opt}</option>
-      ))}
-    </select>
-  )
-}
-
-function ScaleRadio({ value, options, onChange }) {
-  return (
-    <div className="flex gap-2 flex-wrap">
-      {options.map(opt => (
-        <button
-          key={opt}
-          onClick={() => onChange(opt)}
-          className={clsx(
-            'px-3 py-1.5 rounded-lg text-xs font-medium border transition-all',
-            value === opt
-              ? 'bg-white/10 border-white/20 text-white'
-              : 'bg-transparent border-white/[0.08] text-white/40 hover:text-white/60 hover:border-white/15'
-          )}
-        >
-          {SCALE_LABELS[opt]}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-function TokenPreviewRow({ label, before, after, changed }) {
-  return (
-    <div className="flex items-center gap-3 py-2 border-b border-white/[0.04] last:border-0">
-      <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ background: label }} />
-      <code className={clsx('text-xs flex-1', changed ? 'text-white/40 line-through' : 'text-white/50')}>{before}</code>
-      {changed && (
-        <>
-          <span className="text-white/20 text-xs">→</span>
-          <code className="text-xs text-white font-medium">{after}</code>
-        </>
+    <button
+      onClick={() => onChange(option.value)}
+      className={clsx(
+        'flex-1 text-left px-4 py-3 rounded-xl border transition-all',
+        selected
+          ? 'bg-white/[0.08] border-white/25 text-white'
+          : 'bg-transparent border-white/[0.08] text-white/40 hover:text-white/60 hover:border-white/15'
       )}
-    </div>
+    >
+      <div className="text-sm font-medium mb-0.5">{option.label}</div>
+      <div className="text-[11px] font-mono opacity-50">{option.example}</div>
+    </button>
   )
 }
 
 export default function SemanticsSection({ store }) {
-  const { vocabulary, updateVocabulary, semanticColorTokens, typography, colorPalettes } = store
+  const { vocabulary, updateVocabulary, colorPalettes, semanticColorTokens } = store
+  const colorScale = vocabulary?.scales?.color || 'numeric-100'
 
-  function colorOf(tokenId) {
+  const brandPalette = colorPalettes[0]
+  const sampleSteps = [50, 200, 500, 800, 950]
+
+  function resolvedHex(tokenId) {
     const t = semanticColorTokens.find(x => x.id === tokenId)
-    if (!t) return '#888'
+    if (!t) return '#555'
     return resolveSemanticColor(t, colorPalettes)
   }
-
-  // Representative tokens for the live preview
-  const previewColorTokens = [
-    'background.default', 'background.subtle',
-    'text.primary', 'text.secondary', 'text.disabled',
-    'brand.default', 'brand.subtle',
-    'border.default',
-    'success.default', 'success.subtle',
-    'danger.default',
-  ]
-
-  const previewTypoTokens = typography.semantic.filter(t => t.concept.tshirtStep)
 
   return (
     <div className="max-w-5xl mx-auto px-8 py-10">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white tracking-tight">Semantics</h1>
+        <h1 className="text-2xl font-bold text-white tracking-tight">Naming</h1>
         <p className="text-sm text-white/40 mt-1">
-          Configure your token naming vocabulary. Changes cascade to the UI, JSON export, and markdown output.
+          Configure how token names are structured. Changes cascade to JSON export and markdown output.
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="space-y-6">
 
-        {/* Category aliases */}
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-6 col-span-2">
-          <h2 className="text-xs font-semibold tracking-widest text-white/30 uppercase mb-5">Category Aliases</h2>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-            {Object.entries(CATEGORY_OPTIONS).map(([canonical, opts]) => (
-              <div key={canonical} className="flex items-center gap-4">
-                <code className="text-xs text-white/30 w-24 flex-shrink-0">{canonical}</code>
-                <span className="text-white/20 text-xs">→</span>
-                <Select
-                  value={vocabulary.categories[canonical] || canonical}
-                  options={opts}
-                  onChange={v => updateVocabulary(`categories.${canonical}`, v)}
-                />
+        {/* Color primitive scale format */}
+        <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-6">
+          <h2 className="text-xs font-semibold tracking-widest text-white/30 uppercase mb-1">
+            Primitive Scale — Color
+          </h2>
+          <p className="text-xs text-white/30 mb-5">Choose how step numbers appear in your exported token names.</p>
+
+          <div className="flex gap-3 mb-5">
+            {COLOR_SCALE_OPTIONS.map(opt => (
+              <RadioCard
+                key={opt.value}
+                value={colorScale}
+                option={opt}
+                onChange={v => updateVocabulary('scales.color', v)}
+              />
+            ))}
+          </div>
+
+          {brandPalette && (
+            <div className="rounded-lg bg-black/20 border border-white/[0.06] p-4">
+              <div className="text-[10px] font-semibold tracking-widest text-white/20 uppercase mb-3">
+                Live preview — {brandPalette.name}
+              </div>
+              <div className="space-y-2">
+                {sampleSteps.map(step => (
+                  <div key={step} className="flex items-center gap-3">
+                    <div className="w-5 h-5 rounded flex-shrink-0" style={{ background: brandPalette.scale[step] }} />
+                    <code className="text-xs text-white/70 font-mono">
+                      color.{brandPalette.id}.{formatColorStep(step, colorScale)}
+                    </code>
+                    <span className="text-[10px] font-mono text-white/20 ml-auto">{brandPalette.scale[step]}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Other primitives - fixed, informational */}
+        <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-6">
+          <h2 className="text-xs font-semibold tracking-widest text-white/30 uppercase mb-1">Other Primitive Scales</h2>
+          <p className="text-xs text-white/30 mb-5">Fixed formats for the remaining foundations.</p>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: 'Typography', format: 'T-shirt', steps: ['xs', 'sm', 'base', 'lg', 'xl', '2xl', '3xl'] },
+              { label: 'Spacing', format: 'Multiplier', steps: ['0', '1', '2', '4', '8', '12', '16'] },
+              { label: 'Radius', format: 'Descriptive', steps: ['none', 'xs', 'sm', 'md', 'lg', 'xl', 'full'] },
+            ].map(({ label, format, steps }) => (
+              <div key={label} className="rounded-lg bg-black/20 border border-white/[0.06] p-4">
+                <div className="text-xs text-white/60 font-medium mb-0.5">{label}</div>
+                <div className="text-[10px] text-white/30 mb-3">{format}</div>
+                <div className="flex flex-wrap gap-1">
+                  {steps.map(s => (
+                    <span key={s} className="text-[9px] font-mono text-white/40 bg-white/[0.04] rounded px-1.5 py-0.5">{s}</span>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Variant names */}
+        {/* Semantic structure */}
         <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-6">
-          <h2 className="text-xs font-semibold tracking-widest text-white/30 uppercase mb-5">Variant Names</h2>
-          <div className="space-y-4">
-            <div>
-              <div className="text-xs text-white/40 mb-2">Default / base state</div>
-              <div className="flex items-center gap-4">
-                <code className="text-xs text-white/30 w-20">default</code>
-                <span className="text-white/20 text-xs">→</span>
-                <Select
-                  value={vocabulary.variants.default}
-                  options={VARIANT_OPTIONS.default}
-                  onChange={v => updateVocabulary('variants.default', v)}
-                />
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-white/40 mb-2">Subtle / muted variant</div>
-              <div className="flex items-center gap-4">
-                <code className="text-xs text-white/30 w-20">subtle</code>
-                <span className="text-white/20 text-xs">→</span>
-                <Select
-                  value={vocabulary.variants.subtle}
-                  options={VARIANT_OPTIONS.subtle}
-                  onChange={v => updateVocabulary('variants.subtle', v)}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+          <h2 className="text-xs font-semibold tracking-widest text-white/30 uppercase mb-1">Semantic Token Structure</h2>
+          <p className="text-xs text-white/30 mb-5">Semantic tokens always follow this fixed pattern.</p>
 
-        {/* Scale style */}
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-6">
-          <h2 className="text-xs font-semibold tracking-widest text-white/30 uppercase mb-5">Scale Style</h2>
-          <div className="space-y-5">
-            {Object.entries(SCALE_OPTIONS).map(([foundation, opts]) => (
-              <div key={foundation}>
-                <div className="text-xs text-white/40 mb-2 capitalize">{foundation}</div>
-                <ScaleRadio
-                  value={vocabulary.scales[foundation]}
-                  options={opts}
-                  onChange={v => updateVocabulary(`scales.${foundation}`, v)}
+          <div className="rounded-lg bg-black/20 border border-white/[0.06] px-5 py-4 mb-5">
+            <code className="text-sm font-mono">
+              <span className="text-white/50">color.</span>
+              <span className="text-blue-400/80">{'{category}'}</span>
+              <span className="text-white/50">.</span>
+              <span className="text-emerald-400/80">{'{role}'}</span>
+              <span className="text-white/30">[.{'{state}'}]</span>
+            </code>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {semanticColorTokens.slice(0, 10).map(token => (
+              <div key={token.id} className="flex items-center gap-2.5 py-1.5 px-3 rounded-lg hover:bg-white/[0.03]">
+                <div
+                  className="w-3 h-3 rounded-full flex-shrink-0 border border-white/10"
+                  style={{ background: resolvedHex(token.id) }}
                 />
+                <code className="text-[11px] font-mono text-white/60 truncate">{token.id}</code>
+                {token.concept.state && (
+                  <span className="text-[9px] font-mono text-white/25 bg-white/[0.05] rounded px-1.5 py-0.5 flex-shrink-0">
+                    {token.concept.state}
+                  </span>
+                )}
               </div>
             ))}
-          </div>
-        </div>
-
-        {/* Live preview — color tokens */}
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-6">
-          <h2 className="text-xs font-semibold tracking-widest text-white/30 uppercase mb-4">Color Token Names</h2>
-          <div>
-            {previewColorTokens.map(id => {
-              const token = semanticColorTokens.find(t => t.id === id)
-              if (!token) return null
-              const derived = deriveColorTokenName(token.concept, vocabulary)
-              const changed = derived !== id
-              return (
-                <TokenPreviewRow
-                  key={id}
-                  label={colorOf(id)}
-                  before={id}
-                  after={derived}
-                  changed={changed}
-                />
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Live preview — typography tokens */}
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-6">
-          <h2 className="text-xs font-semibold tracking-widest text-white/30 uppercase mb-4">Typography Token Names</h2>
-          <div>
-            {previewTypoTokens.map(token => {
-              const derived = deriveTypographyTokenName(token.concept, vocabulary)
-              const changed = derived !== token.id
-              return (
-                <TokenPreviewRow
-                  key={token.id}
-                  label="#888"
-                  before={token.id}
-                  after={derived}
-                  changed={changed}
-                />
-              )
-            })}
           </div>
         </div>
 

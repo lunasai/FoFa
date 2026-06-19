@@ -1,21 +1,18 @@
 import { useState } from 'react'
 import clsx from 'clsx'
-import { Palette, Type, Ruler, Square, Download, Upload, FileJson, FileText, Eye, Sliders } from 'lucide-react'
+import { Palette, Type, Ruler, Square, Download, Upload, FileJson, FileText, Eye, Tag } from 'lucide-react'
 import { buildTokensJson, buildDesignMd, downloadFile } from '../lib/exportUtils'
-import ImportWizard from './ImportWizard'
 
 const NAV_ITEMS = [
   { id: 'color',      label: 'Color',      icon: Palette },
   { id: 'typography', label: 'Typography', icon: Type },
   { id: 'spacing',    label: 'Spacing',    icon: Ruler },
   { id: 'shapes',     label: 'Shapes',     icon: Square },
-  { id: 'semantics',  label: 'Semantics',  icon: Sliders },
+  { id: 'semantics',  label: 'Naming',     icon: Tag },
   { id: 'preview',    label: 'Preview',    icon: Eye },
 ]
 
 export default function Layout({ section, onSectionChange, store, children }) {
-  const [showImport, setShowImport] = useState(false)
-
   function handleExportJson() {
     const tokens = buildTokensJson(store)
     downloadFile(JSON.stringify(tokens, null, 2), 'tokens.json', 'application/json')
@@ -114,13 +111,6 @@ export default function Layout({ section, onSectionChange, store, children }) {
             <Upload size={16} className="flex-shrink-0" />
             Load project
           </button>
-          <button
-            onClick={() => setShowImport(true)}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/40 hover:text-white/70 hover:bg-white/5 transition-all"
-          >
-            <FileJson size={16} className="flex-shrink-0" />
-            Import tokens.json
-          </button>
         </div>
       </aside>
 
@@ -129,18 +119,6 @@ export default function Layout({ section, onSectionChange, store, children }) {
         {children}
       </main>
 
-      {/* Import wizard */}
-      {showImport && (
-        <ImportWizard
-          existingPalettes={store.colorPalettes}
-          existingSemanticTokens={store.semanticColorTokens}
-          onApply={({ palettes, semanticTokens }) => {
-            store.applyImport({ palettes, semanticTokens })
-            setShowImport(false)
-          }}
-          onClose={() => setShowImport(false)}
-        />
-      )}
     </div>
   )
 }

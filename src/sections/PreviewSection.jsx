@@ -27,23 +27,23 @@ export default function PreviewSection({ store }) {
   const sans = typography.fontFamily.sans
   const mono = typography.fontFamily.mono
 
-  const bg     = color('background.default')
-  const surf   = color('surface.default')
-  const border = color('border.default')
-  const tp     = color('text.primary')
-  const ts     = color('text.secondary')
-  const td     = color('text.disabled')
-  const brand  = color('brand.default')
-  const brandH = color('brand.hover')
-  const brandS = color('brand.subtle')
-  const brandT = color('brand.text')
+  const bg     = color('color.background.default')
+  const surf   = color('color.surface.default')
+  const border = color('color.border.default')
+  const tp     = color('color.text.primary')
+  const ts     = color('color.text.secondary')
+  const td     = color('color.text.disabled')
+  const brand  = color('color.brand.default')
+  const brandH = color('color.brand.default.hover')
+  const brandS = color('color.brand.subtle')
+  const brandT = color('color.brand.text')
 
-  const successC  = color('success.default')
-  const successBg = color('success.subtle')
-  const warningC  = color('warning.default')
-  const warningBg = color('warning.subtle')
-  const dangerC   = color('danger.default')
-  const dangerBg  = color('danger.subtle')
+  const successC  = color('color.success.default')
+  const successBg = color('color.success.subtle')
+  const warningC  = color('color.warning.default')
+  const warningBg = color('color.warning.subtle')
+  const dangerC   = color('color.danger.default')
+  const dangerBg  = color('color.danger.subtle')
 
   const cardR  = radius('card')
   const badgeR = radius('badge')
@@ -143,9 +143,9 @@ export default function PreviewSection({ store }) {
         <div style={{ ...tile({ border: `1px solid ${border}`, padding: 24, background: bg }), fontFamily: sans }}>
           <div style={{ color: td, fontSize: 10, fontFamily: mono, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>Surfaces</div>
           {[
-            { label: 'background.default', bg: bg, border: border },
-            { label: 'surface.default',    bg: surf, border: border },
-            { label: 'background.subtle',  bg: color('background.subtle'), border: border },
+            { label: 'color.background.default', bg: bg, border: border },
+            { label: 'color.surface.default',    bg: surf, border: border },
+            { label: 'color.background.subtle',  bg: color('color.background.subtle'), border: border },
           ].map(({ label, bg: b, border: bo }) => (
             <div key={label} style={{ background: b, border: `1px solid ${bo}`, borderRadius: 8, padding: '10px 14px', marginBottom: 6 }}>
               <div style={{ color: tp, fontSize: 13, fontWeight: 500 }}>Surface text</div>
