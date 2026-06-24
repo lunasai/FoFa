@@ -68,7 +68,6 @@ export function buildTokensJson(store) {
 
   // Spacing
   tokens.spacing = {
-    baseUnit: { $value: `${spacing.baseUnit}px`, $type: 'dimension' },
     scale: {},
     grid: {
       columns: { $value: spacing.grid.columns },
@@ -76,9 +75,8 @@ export function buildTokensJson(store) {
       margin: { $value: `${spacing.grid.margin}px`, $type: 'dimension' },
     },
   }
-  spacing.scale.forEach(multiplier => {
-    const px = multiplier * spacing.baseUnit
-    tokens.spacing.scale[`${multiplier}`] = { $value: `${px}px`, $type: 'dimension' }
+  spacing.scale.forEach(s => {
+    tokens.spacing.scale[s.step] = { $value: `${s.value}px`, $type: 'dimension' }
   })
 
   // Shapes
@@ -189,15 +187,10 @@ export function buildDesignMd(store) {
   lines.push('')
   lines.push('## Spacing & Grid')
   lines.push('')
-  lines.push(`- **Base unit:** ${spacing.baseUnit}px`)
-  lines.push('')
   lines.push('### Spacing Scale')
   lines.push('')
-  lines.push('Values are expressed as multiples of the base unit.')
-  lines.push('')
-  spacing.scale.forEach(multiplier => {
-    const px = multiplier * spacing.baseUnit
-    lines.push(`- \`spacing.${multiplier}\` — ${px}px`)
+  spacing.scale.forEach(s => {
+    lines.push(`- \`spacing.${s.step}\` — ${s.value}px`)
   })
   lines.push('')
   lines.push('### Grid')

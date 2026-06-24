@@ -177,19 +177,19 @@ export default function PreviewSection({ store }) {
         {/* Spacing ramp */}
         <div style={{ ...tile({ background: surf, border: `1px solid ${border}`, padding: 20 }), fontFamily: mono }}>
           <div style={{ color: td, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>
-            Spacing · base {spacing.baseUnit}px
+            Spacing
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {spacing.scale.filter(m => m > 0 && m <= 16).map(m => {
-              const px = m * spacing.baseUnit
-              const maxPx = 16 * spacing.baseUnit
-              return (
-                <div key={m} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: (px / maxPx) * 140, height: 6, borderRadius: '3px', background: brand, opacity: 0.6, flexShrink: 0 }} />
-                  <span style={{ color: td, fontSize: 9 }}>{px}px</span>
+            {(() => {
+              const steps = spacing.scale.filter(s => s.value > 0)
+              const maxPx = Math.max(...steps.map(s => s.value), 1)
+              return steps.map(s => (
+                <div key={s.step} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: (s.value / maxPx) * 140, height: 6, borderRadius: '3px', background: brand, opacity: 0.6, flexShrink: 0 }} />
+                  <span style={{ color: td, fontSize: 9 }}>{s.value}px</span>
                 </div>
-              )
-            })}
+              ))
+            })()}
           </div>
         </div>
 

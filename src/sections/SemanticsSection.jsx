@@ -1,6 +1,7 @@
 import clsx from 'clsx'
 import { COLOR_SCALE_OPTIONS, formatColorStep } from '../lib/vocabularyUtils'
 import { resolveSemanticColor } from '../lib/colorUtils'
+import { StepNameEditor } from '../components/StepNameEditor'
 
 function RadioCard({ value, option, onChange }) {
   const selected = value === option.value
@@ -21,7 +22,11 @@ function RadioCard({ value, option, onChange }) {
 }
 
 export default function SemanticsSection({ store }) {
-  const { vocabulary, updateVocabulary, colorPalettes, semanticColorTokens } = store
+  const {
+    vocabulary, updateVocabulary, colorPalettes, semanticColorTokens,
+    typography, spacing, shapes,
+    updateTypographyStepName, updateShapeStepName, updateSpacingStepName,
+  } = store
   const colorScale = vocabulary?.scales?.color || 'numeric-100'
 
   const brandPalette = colorPalettes[0]
@@ -82,26 +87,56 @@ export default function SemanticsSection({ store }) {
           )}
         </div>
 
-        {/* Other primitives - fixed, informational */}
+        {/* Scale step names — editable */}
         <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-6">
-          <h2 className="text-xs font-semibold tracking-widest text-white/30 uppercase mb-1">Other Primitive Scales</h2>
-          <p className="text-xs text-white/30 mb-5">Fixed formats for the remaining foundations.</p>
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: 'Typography', format: 'T-shirt', steps: ['xs', 'sm', 'base', 'lg', 'xl', '2xl', '3xl'] },
-              { label: 'Spacing', format: 'Multiplier', steps: ['0', '1', '2', '4', '8', '12', '16'] },
-              { label: 'Radius', format: 'Descriptive', steps: ['none', 'xs', 'sm', 'md', 'lg', 'xl', 'full'] },
-            ].map(({ label, format, steps }) => (
-              <div key={label} className="rounded-lg bg-black/20 border border-white/[0.06] p-4">
-                <div className="text-xs text-white/60 font-medium mb-0.5">{label}</div>
-                <div className="text-[10px] text-white/30 mb-3">{format}</div>
-                <div className="flex flex-wrap gap-1">
-                  {steps.map(s => (
-                    <span key={s} className="text-[9px] font-mono text-white/40 bg-white/[0.04] rounded px-1.5 py-0.5">{s}</span>
-                  ))}
-                </div>
+          <h2 className="text-xs font-semibold tracking-widest text-white/30 uppercase mb-1">Scale Step Names</h2>
+          <p className="text-xs text-white/30 mb-5">Click any step to rename it. Changes cascade to all token references.</p>
+
+          <div className="space-y-5">
+            {/* Typography */}
+            <div>
+              <div className="text-[10px] font-semibold tracking-widest text-white/25 uppercase mb-2">Typography</div>
+              <div className="flex flex-wrap gap-1.5">
+                {typography.scale.map(s => (
+                  <StepNameEditor
+                    key={s.step}
+                    value={s.step}
+                    onChange={newName => updateTypographyStepName(s.step, newName)}
+                    size="sm"
+                  />
+                ))}
               </div>
-            ))}
+            </div>
+
+            {/* Spacing */}
+            <div>
+              <div className="text-[10px] font-semibold tracking-widest text-white/25 uppercase mb-2">Spacing</div>
+              <div className="flex flex-wrap gap-1.5">
+                {spacing.scale.map(s => (
+                  <StepNameEditor
+                    key={s.step}
+                    value={s.step}
+                    onChange={newName => updateSpacingStepName(s.step, newName)}
+                    size="sm"
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Radius */}
+            <div>
+              <div className="text-[10px] font-semibold tracking-widest text-white/25 uppercase mb-2">Radius</div>
+              <div className="flex flex-wrap gap-1.5">
+                {shapes.scale.map(s => (
+                  <StepNameEditor
+                    key={s.step}
+                    value={s.step}
+                    onChange={newName => updateShapeStepName(s.step, newName)}
+                    size="sm"
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 

@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import clsx from 'clsx'
+import { StepNameEditor } from '../components/StepNameEditor'
 
 const WEIGHTS = [100, 200, 300, 400, 500, 600, 700, 800, 900]
 
-function ScaleRow({ entry, fontFamily, onChange }) {
+function ScaleRow({ entry, fontFamily, onChange, onRenameStep }) {
   return (
     <div className="flex items-center gap-4 py-3 border-b border-white/[0.04] last:border-0">
       {/* Preview */}
@@ -22,7 +23,9 @@ function ScaleRow({ entry, fontFamily, onChange }) {
         Aa
       </div>
 
-      <div className="text-xs font-mono text-white/40 w-16 flex-shrink-0">{entry.step}</div>
+      <div className="w-16 flex-shrink-0">
+        <StepNameEditor value={entry.step} onChange={newName => onRenameStep(entry.step, newName)} />
+      </div>
 
       {/* Size */}
       <div className="flex items-center gap-2 flex-shrink-0">
@@ -69,7 +72,7 @@ function ScaleRow({ entry, fontFamily, onChange }) {
 }
 
 export default function TypographySection({ store }) {
-  const { typography, setTypography } = store
+  const { typography, setTypography, updateTypographyStepName } = store
 
   function updateScale(step, updated) {
     setTypography(prev => ({
@@ -144,6 +147,7 @@ export default function TypographySection({ store }) {
               entry={entry}
               fontFamily={typography.fontFamily.sans}
               onChange={updated => updateScale(entry.step, updated)}
+              onRenameStep={updateTypographyStepName}
             />
           ))}
         </div>

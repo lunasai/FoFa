@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import clsx from 'clsx'
 import { ChevronDown } from 'lucide-react'
+import { StepNameEditor } from '../components/StepNameEditor'
 
 function SemanticTokenRow({ entry, shapes, onUpdate }) {
   const [open, setOpen] = useState(false)
@@ -56,7 +57,7 @@ function SemanticTokenRow({ entry, shapes, onUpdate }) {
 }
 
 export default function ShapesSection({ store }) {
-  const { shapes, setShapes } = store
+  const { shapes, setShapes, updateShapeStepName } = store
 
   function updateScaleStep(step, value) {
     setShapes(prev => ({
@@ -100,7 +101,9 @@ export default function ShapesSection({ store }) {
                   />
                 </div>
 
-                <div className="text-xs font-mono text-white/60 text-center mb-3">{entry.step}</div>
+                <div className="flex justify-center mb-3">
+                  <StepNameEditor value={entry.step} onChange={newName => updateShapeStepName(entry.step, newName)} />
+                </div>
                 <div className="text-[11px] text-white/30 text-center mb-3">{entry.description}</div>
 
                 {entry.value !== 9999 ? (

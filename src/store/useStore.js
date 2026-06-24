@@ -57,15 +57,15 @@ const DEFAULT_SEMANTIC_COLOR_TOKENS = [
 const DEFAULT_TYPOGRAPHY = {
   fontFamily: { sans: 'Inter, system-ui, sans-serif', mono: 'JetBrains Mono, monospace' },
   scale: [
-    { step: 'xs',   size: 12, lineHeight: 1.5,  weight: 400 },
-    { step: 'sm',   size: 14, lineHeight: 1.5,  weight: 400 },
-    { step: 'base', size: 16, lineHeight: 1.5,  weight: 400 },
-    { step: 'lg',   size: 18, lineHeight: 1.4,  weight: 400 },
-    { step: 'xl',   size: 20, lineHeight: 1.4,  weight: 500 },
-    { step: '2xl',  size: 24, lineHeight: 1.3,  weight: 500 },
-    { step: '3xl',  size: 30, lineHeight: 1.25, weight: 600 },
-    { step: '4xl',  size: 36, lineHeight: 1.2,  weight: 700 },
-    { step: '5xl',  size: 48, lineHeight: 1.1,  weight: 700 },
+    { step: 'xs',  size: 12, lineHeight: 1.5,  weight: 400 },
+    { step: 'sm',  size: 14, lineHeight: 1.5,  weight: 400 },
+    { step: 'md',  size: 16, lineHeight: 1.5,  weight: 400 },
+    { step: 'lg',  size: 18, lineHeight: 1.4,  weight: 400 },
+    { step: 'xl',  size: 20, lineHeight: 1.4,  weight: 500 },
+    { step: '2xl', size: 24, lineHeight: 1.3,  weight: 500 },
+    { step: '3xl', size: 30, lineHeight: 1.25, weight: 600 },
+    { step: '4xl', size: 36, lineHeight: 1.2,  weight: 700 },
+    { step: '5xl', size: 48, lineHeight: 1.1,  weight: 700 },
   ],
   semantic: [
     { id: 'heading.xl', step: '5xl', description: 'Hero headings',
@@ -78,7 +78,7 @@ const DEFAULT_TYPOGRAPHY = {
       concept: { role: 'heading', scaleRank: 4, tshirtStep: 'sm' } },
     { id: 'body.lg',    step: 'lg',  description: 'Large body text',
       concept: { role: 'body', scaleRank: 1, tshirtStep: 'lg' } },
-    { id: 'body.md',    step: 'base',description: 'Default body text',
+    { id: 'body.md',    step: 'md',  description: 'Default body text',
       concept: { role: 'body', scaleRank: 2, tshirtStep: 'md' } },
     { id: 'body.sm',    step: 'sm',  description: 'Small body / supporting text',
       concept: { role: 'body', scaleRank: 3, tshirtStep: 'sm' } },
@@ -92,8 +92,16 @@ const DEFAULT_TYPOGRAPHY = {
 }
 
 const DEFAULT_SPACING = {
-  baseUnit: 4,
-  scale: [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64],
+  scale: [
+    { step: 'none', value: 0 },
+    { step: 'xs',   value: 4 },
+    { step: 'sm',   value: 8 },
+    { step: 'md',   value: 12 },
+    { step: 'lg',   value: 16 },
+    { step: 'xl',   value: 24 },
+    { step: '2xl',  value: 40 },
+    { step: '3xl',  value: 64 },
+  ],
   grid: { columns: 12, gutter: 24, margin: 32 },
 }
 
@@ -173,6 +181,35 @@ export function useStore() {
     })
   }, [])
 
+  const updateTypographyStepName = useCallback((oldStep, newStep) => {
+    const trimmed = newStep.trim()
+    if (!trimmed || trimmed === oldStep) return
+    setTypography(prev => ({
+      ...prev,
+      scale:    prev.scale.map(s => s.step === oldStep ? { ...s, step: trimmed } : s),
+      semantic: prev.semantic.map(s => s.step === oldStep ? { ...s, step: trimmed } : s),
+    }))
+  }, [])
+
+  const updateShapeStepName = useCallback((oldStep, newStep) => {
+    const trimmed = newStep.trim()
+    if (!trimmed || trimmed === oldStep) return
+    setShapes(prev => ({
+      ...prev,
+      scale:    prev.scale.map(s => s.step === oldStep ? { ...s, step: trimmed } : s),
+      semantic: prev.semantic.map(s => s.step === oldStep ? { ...s, step: trimmed } : s),
+    }))
+  }, [])
+
+  const updateSpacingStepName = useCallback((oldStep, newStep) => {
+    const trimmed = newStep.trim()
+    if (!trimmed || trimmed === oldStep) return
+    setSpacing(prev => ({
+      ...prev,
+      scale: prev.scale.map(s => s.step === oldStep ? { ...s, step: trimmed } : s),
+    }))
+  }, [])
+
   const applyImport = useCallback(({ palettes, semanticTokens }) => {
     if (palettes)       setColorPalettes(palettes)
     if (semanticTokens) setSemanticColorTokens(semanticTokens)
@@ -195,6 +232,7 @@ export function useStore() {
     colorPalettes, semanticColorTokens, typography, spacing, shapes, vocabulary,
     updatePaletteBaseColor, updatePaletteStep, addPalette, removePalette,
     updateSemanticToken, setTypography, setSpacing, setShapes, updateVocabulary,
+    updateTypographyStepName, updateShapeStepName, updateSpacingStepName,
     applyImport, exportProject, importProject,
   }
 }
