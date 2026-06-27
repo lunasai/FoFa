@@ -10,7 +10,14 @@
       "mcp__Claude_Preview__preview_start",
       "Bash(kill 71038)",
       "Bash(git rm *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(npx vite *)",
+      "Bash(lsof -ti:5173,5174,60798)",
+      "Bash(xargs kill -9)",
+      "Bash(lsof -ti:5173,5174)",
+      "mcp__visualize__read_me",
+      "mcp__visualize__show_widget"
     ]
   }
 }

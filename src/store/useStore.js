@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
-import { generateColorScale } from '../lib/colorUtils'
-import { DEFAULT_VOCABULARY } from '../lib/vocabularyUtils'
+import { generateColorScale, computeAutoConfig } from '../lib/colorUtils'
+import { DEFAULT_VOCABULARY, generateStepNamesForScale } from '../lib/vocabularyUtils'
 
 const DEFAULT_COLOR_PALETTES = [
   { id: 'brand', name: 'Brand', baseColor: '#3B82F6', scale: generateColorScale('#3B82F6') },
@@ -12,82 +12,96 @@ const DEFAULT_COLOR_PALETTES = [
 
 // concept: { category, role, state? } — stable semantic identity, separate from displayed name
 const DEFAULT_SEMANTIC_COLOR_TOKENS = [
-  { id: 'color.background.default', paletteId: 'neutral', step: 50,  description: 'Page background',
-    concept: { category: 'background', role: 'default' } },
-  { id: 'color.background.subtle',  paletteId: 'neutral', step: 100, description: 'Subtle background for surfaces',
-    concept: { category: 'background', role: 'subtle' } },
-  { id: 'color.surface.default',    paletteId: 'neutral', step: 0,   description: 'Card and panel surfaces', isWhite: true,
+  { id: 'color.bg.default',          paletteId: 'neutral', step: 50,  description: 'Page background',
+    concept: { category: 'bg', role: 'default' } },
+  { id: 'color.bg.subtle',           paletteId: 'neutral', step: 100, description: 'Subtle background for surfaces',
+    concept: { category: 'bg', role: 'subtle' } },
+  { id: 'color.bg.brand.subtle',        paletteId: 'brand',   step: 100, description: 'Brand subtle background',
+    concept: { category: 'bg', role: 'brand' } },
+  { id: 'color.bg.success.subtle',      paletteId: 'success', step: 100, description: 'Success subtle background',
+    concept: { category: 'bg', role: 'success' } },
+  { id: 'color.bg.warning.subtle',      paletteId: 'warning', step: 100, description: 'Warning subtle background',
+    concept: { category: 'bg', role: 'warning' } },
+  { id: 'color.bg.danger.subtle',       paletteId: 'danger',  step: 100, description: 'Danger subtle background',
+    concept: { category: 'bg', role: 'danger' } },
+  { id: 'color.bg.brand.solid',       paletteId: 'brand',   step: 500, description: 'Solid brand fill — buttons, badges',
+    concept: { category: 'bg', role: 'brand' } },
+  { id: 'color.bg.brand.solid.hover',  paletteId: 'brand',  step: 600, description: 'Brand solid on hover',
+    concept: { category: 'bg', role: 'brand', state: 'hover' } },
+  { id: 'color.bg.brand.solid.active', paletteId: 'brand',  step: 700, description: 'Brand solid on active/press',
+    concept: { category: 'bg', role: 'brand', state: 'active' } },
+  { id: 'color.bg.success.solid',     paletteId: 'success', step: 500, description: 'Solid success fill — badges, indicators',
+    concept: { category: 'bg', role: 'success' } },
+  { id: 'color.bg.warning.solid',     paletteId: 'warning', step: 500, description: 'Solid warning fill — badges, indicators',
+    concept: { category: 'bg', role: 'warning' } },
+  { id: 'color.bg.danger.solid',      paletteId: 'danger',  step: 500, description: 'Solid danger fill — badges, indicators',
+    concept: { category: 'bg', role: 'danger' } },
+  { id: 'color.on.brand',   paletteId: 'brand',   step: 50,  description: 'Text/icons on solid brand bg',
+    concept: { category: 'on', role: 'brand' } },
+  { id: 'color.on.success', paletteId: 'success', step: 50,  description: 'Text/icons on solid success bg',
+    concept: { category: 'on', role: 'success' } },
+  { id: 'color.on.warning', paletteId: 'warning', step: 900, description: 'Text/icons on solid warning bg',
+    concept: { category: 'on', role: 'warning' } },
+  { id: 'color.on.danger',  paletteId: 'danger',  step: 50,  description: 'Text/icons on solid danger bg',
+    concept: { category: 'on', role: 'danger' } },
+  { id: 'color.surface.default',     paletteId: 'neutral', step: 0,   description: 'Card and panel surfaces', isWhite: true,
     concept: { category: 'surface', role: 'default' } },
-  { id: 'color.surface.raised',     paletteId: 'neutral', step: 50,  description: 'Elevated surface (e.g. modals)',
+  { id: 'color.surface.raised',      paletteId: 'neutral', step: 50,  description: 'Elevated surface (e.g. modals)',
     concept: { category: 'surface', role: 'raised' } },
-  { id: 'color.border.default',     paletteId: 'neutral', step: 200, description: 'Default border color',
+  { id: 'color.border.default',      paletteId: 'neutral', step: 200, description: 'Default border color',
     concept: { category: 'border', role: 'default' } },
-  { id: 'color.border.strong',      paletteId: 'neutral', step: 400, description: 'Stronger border for emphasis',
+  { id: 'color.border.strong',       paletteId: 'neutral', step: 400, description: 'Stronger border for emphasis',
     concept: { category: 'border', role: 'strong' } },
-  { id: 'color.text.primary',       paletteId: 'neutral', step: 900, description: 'Primary text — headings, body',
+  { id: 'color.border.brand',        paletteId: 'brand',   step: 300, description: 'Brand-colored border',
+    concept: { category: 'border', role: 'brand' } },
+  { id: 'color.border.success',      paletteId: 'success', step: 300, description: 'Success-colored border',
+    concept: { category: 'border', role: 'success' } },
+  { id: 'color.border.warning',      paletteId: 'warning', step: 300, description: 'Warning-colored border',
+    concept: { category: 'border', role: 'warning' } },
+  { id: 'color.border.danger',       paletteId: 'danger',  step: 300, description: 'Danger-colored border',
+    concept: { category: 'border', role: 'danger' } },
+  { id: 'color.text.primary',        paletteId: 'neutral', step: 900, description: 'Primary text — headings, body',
     concept: { category: 'text', role: 'primary' } },
-  { id: 'color.text.secondary',     paletteId: 'neutral', step: 600, description: 'Secondary text — labels, captions',
+  { id: 'color.text.secondary',      paletteId: 'neutral', step: 600, description: 'Secondary text — labels, captions',
     concept: { category: 'text', role: 'secondary' } },
-  { id: 'color.text.disabled',      paletteId: 'neutral', step: 400, description: 'Disabled or placeholder text',
+  { id: 'color.text.disabled',       paletteId: 'neutral', step: 400, description: 'Disabled or placeholder text',
     concept: { category: 'text', role: 'disabled' } },
-  { id: 'color.brand.default',      paletteId: 'brand',   step: 500, description: 'Primary brand / interactive color',
-    concept: { category: 'brand', role: 'default' } },
-  { id: 'color.brand.default.hover', paletteId: 'brand',  step: 600, description: 'Brand color on hover',
-    concept: { category: 'brand', role: 'default', state: 'hover' } },
-  { id: 'color.brand.default.active', paletteId: 'brand', step: 700, description: 'Brand color on active/press',
-    concept: { category: 'brand', role: 'default', state: 'active' } },
-  { id: 'color.brand.subtle',       paletteId: 'brand',   step: 100, description: 'Subtle brand tint for backgrounds',
-    concept: { category: 'brand', role: 'subtle' } },
-  { id: 'color.brand.text',         paletteId: 'brand',   step: 700, description: 'Brand-colored text on light bg',
-    concept: { category: 'brand', role: 'text' } },
-  { id: 'color.success.default',    paletteId: 'success', step: 500, description: 'Success state color',
-    concept: { category: 'success', role: 'default' } },
-  { id: 'color.success.subtle',     paletteId: 'success', step: 100, description: 'Success background tint',
-    concept: { category: 'success', role: 'subtle' } },
-  { id: 'color.warning.default',    paletteId: 'warning', step: 500, description: 'Warning state color',
-    concept: { category: 'warning', role: 'default' } },
-  { id: 'color.warning.subtle',     paletteId: 'warning', step: 100, description: 'Warning background tint',
-    concept: { category: 'warning', role: 'subtle' } },
-  { id: 'color.danger.default',     paletteId: 'danger',  step: 500, description: 'Danger / error state color',
-    concept: { category: 'danger', role: 'default' } },
-  { id: 'color.danger.subtle',      paletteId: 'danger',  step: 100, description: 'Danger background tint',
-    concept: { category: 'danger', role: 'subtle' } },
+  { id: 'color.text.brand',          paletteId: 'brand',   step: 700, description: 'Brand-colored text',
+    concept: { category: 'text', role: 'brand' } },
+  { id: 'color.text.success',        paletteId: 'success', step: 700, description: 'Success-colored text',
+    concept: { category: 'text', role: 'success' } },
+  { id: 'color.text.warning',        paletteId: 'warning', step: 700, description: 'Warning-colored text',
+    concept: { category: 'text', role: 'warning' } },
+  { id: 'color.text.danger',         paletteId: 'danger',  step: 700, description: 'Danger-colored text',
+    concept: { category: 'text', role: 'danger' } },
 ]
 
 const DEFAULT_TYPOGRAPHY = {
   fontFamily: { sans: 'Inter, system-ui, sans-serif', mono: 'JetBrains Mono, monospace' },
-  scale: [
-    { step: 'xs',  size: 12, lineHeight: 1.5,  weight: 400 },
-    { step: 'sm',  size: 14, lineHeight: 1.5,  weight: 400 },
-    { step: 'md',  size: 16, lineHeight: 1.5,  weight: 400 },
-    { step: 'lg',  size: 18, lineHeight: 1.4,  weight: 400 },
-    { step: 'xl',  size: 20, lineHeight: 1.4,  weight: 500 },
-    { step: '2xl', size: 24, lineHeight: 1.3,  weight: 500 },
-    { step: '3xl', size: 30, lineHeight: 1.25, weight: 600 },
-    { step: '4xl', size: 36, lineHeight: 1.2,  weight: 700 },
-    { step: '5xl', size: 48, lineHeight: 1.1,  weight: 700 },
+  baseSize: 16,
+  viewport: { min: 320, max: 1440 },
+  size: [
+    { step: 'xs',  min: 0.75,  max: 0.75  },
+    { step: 'sm',  min: 0.875, max: 0.875 },
+    { step: 'md',  min: 1,     max: 1     },
+    { step: 'lg',  min: 1,     max: 1.125 },
+    { step: 'xl',  min: 1.125, max: 1.25  },
+    { step: '2xl', min: 1.25,  max: 1.5   },
+    { step: '3xl', min: 1.5,   max: 1.875 },
+    { step: '4xl', min: 1.875, max: 2.25  },
+    { step: '5xl', min: 2.25,  max: 3     },
   ],
   semantic: [
-    { id: 'heading.xl', step: '5xl', description: 'Hero headings',
-      concept: { role: 'heading', scaleRank: 1, tshirtStep: 'xl' } },
-    { id: 'heading.lg', step: '3xl', description: 'Section headings (h1)',
-      concept: { role: 'heading', scaleRank: 2, tshirtStep: 'lg' } },
-    { id: 'heading.md', step: '2xl', description: 'Sub-section headings (h2)',
-      concept: { role: 'heading', scaleRank: 3, tshirtStep: 'md' } },
-    { id: 'heading.sm', step: 'xl',  description: 'Card and panel headings (h3)',
-      concept: { role: 'heading', scaleRank: 4, tshirtStep: 'sm' } },
-    { id: 'body.lg',    step: 'lg',  description: 'Large body text',
-      concept: { role: 'body', scaleRank: 1, tshirtStep: 'lg' } },
-    { id: 'body.md',    step: 'md',  description: 'Default body text',
-      concept: { role: 'body', scaleRank: 2, tshirtStep: 'md' } },
-    { id: 'body.sm',    step: 'sm',  description: 'Small body / supporting text',
-      concept: { role: 'body', scaleRank: 3, tshirtStep: 'sm' } },
-    { id: 'label.md',   step: 'sm',  description: 'Form labels, UI labels',
-      concept: { role: 'label', scaleRank: 1, tshirtStep: 'md' } },
-    { id: 'label.sm',   step: 'xs',  description: 'Small labels, badges',
-      concept: { role: 'label', scaleRank: 2, tshirtStep: 'sm' } },
-    { id: 'caption',    step: 'xs',  description: 'Captions, helper text',
-      concept: { role: 'caption', scaleRank: null, tshirtStep: null } },
+    { id: 'type.heading.xl', size: '5xl', family: 'sans', weight: 700, leading: 1.1,   tracking: -0.05,  description: 'Hero headings',               concept: { role: 'heading', scaleRank: 1, tshirtStep: 'xl' } },
+    { id: 'type.heading.lg', size: '3xl', family: 'sans', weight: 700, leading: 1.1,   tracking: -0.025, description: 'Section headings (h1)',        concept: { role: 'heading', scaleRank: 2, tshirtStep: 'lg' } },
+    { id: 'type.heading.md', size: '2xl', family: 'sans', weight: 600, leading: 1.25,  tracking: -0.025, description: 'Sub-section headings (h2)',    concept: { role: 'heading', scaleRank: 3, tshirtStep: 'md' } },
+    { id: 'type.heading.sm', size: 'xl',  family: 'sans', weight: 600, leading: 1.25,  tracking: 0,      description: 'Card and panel headings (h3)', concept: { role: 'heading', scaleRank: 4, tshirtStep: 'sm' } },
+    { id: 'type.body.lg',    size: 'lg',  family: 'sans', weight: 400, leading: 1.625, tracking: 0,      description: 'Large body text',              concept: { role: 'body',    scaleRank: 1, tshirtStep: 'lg' } },
+    { id: 'type.body.md',    size: 'md',  family: 'sans', weight: 400, leading: 1.5,   tracking: 0,      description: 'Default body text',            concept: { role: 'body',    scaleRank: 2, tshirtStep: 'md' } },
+    { id: 'type.body.sm',    size: 'sm',  family: 'sans', weight: 400, leading: 1.5,   tracking: 0,      description: 'Small body / supporting text', concept: { role: 'body',    scaleRank: 3, tshirtStep: 'sm' } },
+    { id: 'type.label.md',   size: 'sm',  family: 'sans', weight: 500, leading: 1.5,   tracking: 0.025,  description: 'Form labels, UI labels',       concept: { role: 'label',   scaleRank: 1, tshirtStep: 'md' } },
+    { id: 'type.label.sm',   size: 'xs',  family: 'sans', weight: 500, leading: 1.5,   tracking: 0.05,   description: 'Small labels, badges',         concept: { role: 'label',   scaleRank: 2, tshirtStep: 'sm' } },
+    { id: 'type.caption',    size: 'xs',  family: 'sans', weight: 400, leading: 1.5,   tracking: 0.025,  description: 'Captions, helper text',        concept: { role: 'caption', scaleRank: null, tshirtStep: null } },
   ],
 }
 
@@ -117,36 +131,54 @@ const DEFAULT_SHAPES = {
     { step: 'full', value: 9999, description: 'Pills, chips, avatars' },
   ],
   semantic: [
-    { id: 'button',  step: 'md',   description: 'Default button radius',
+    { id: 'radius.button',  step: 'md',   description: 'Default button radius',
       concept: { role: 'button',  isScale: false } },
-    { id: 'input',   step: 'md',   description: 'Form input radius',
+    { id: 'radius.input',   step: 'md',   description: 'Form input radius',
       concept: { role: 'input',   isScale: false } },
-    { id: 'card',    step: 'lg',   description: 'Card and panel radius',
+    { id: 'radius.card',    step: 'lg',   description: 'Card and panel radius',
       concept: { role: 'card',    isScale: false } },
-    { id: 'badge',   step: 'full', description: 'Badge and chip radius',
+    { id: 'radius.badge',   step: 'full', description: 'Badge and chip radius',
       concept: { role: 'badge',   isScale: false } },
-    { id: 'avatar',  step: 'full', description: 'Avatar radius',
+    { id: 'radius.avatar',  step: 'full', description: 'Avatar radius',
       concept: { role: 'avatar',  isScale: false } },
-    { id: 'modal',   step: 'xl',   description: 'Modal and dialog radius',
+    { id: 'radius.modal',   step: 'xl',   description: 'Modal and dialog radius',
       concept: { role: 'modal',   isScale: false } },
-    { id: 'tooltip', step: 'sm',   description: 'Tooltip radius',
+    { id: 'radius.tooltip', step: 'sm',   description: 'Tooltip radius',
       concept: { role: 'tooltip', isScale: false } },
   ],
 }
 
+function applyAutoSteps(tokens, palettes) {
+  return tokens.map(token => {
+    if (token.manualStep) return token
+    const auto = computeAutoConfig(token.id, palettes)
+    if (!auto) return token
+    const { isWhite: _drop, ...autoFields } = auto
+    return { ...token, ...autoFields }
+  })
+}
+
 export function useStore() {
   const [colorPalettes, setColorPalettes]             = useState(DEFAULT_COLOR_PALETTES)
-  const [semanticColorTokens, setSemanticColorTokens] = useState(DEFAULT_SEMANTIC_COLOR_TOKENS)
+  const [semanticColorTokens, setSemanticColorTokens] = useState(() =>
+    applyAutoSteps(DEFAULT_SEMANTIC_COLOR_TOKENS, DEFAULT_COLOR_PALETTES)
+  )
   const [typography, setTypography]                   = useState(DEFAULT_TYPOGRAPHY)
   const [spacing, setSpacing]                         = useState(DEFAULT_SPACING)
   const [shapes, setShapes]                           = useState(DEFAULT_SHAPES)
   const [vocabulary, setVocabulary] = useState(DEFAULT_VOCABULARY)
 
-  const updatePaletteBaseColor = useCallback((id, hex) => {
-    setColorPalettes(prev => prev.map(p =>
-      p.id === id ? { ...p, baseColor: hex, scale: generateColorScale(hex) } : p
-    ))
+  const recomputeSemanticSteps = useCallback((updatedPalettes) => {
+    setSemanticColorTokens(prev => applyAutoSteps(prev, updatedPalettes))
   }, [])
+
+  const updatePaletteBaseColor = useCallback((id, hex) => {
+    const newPalettes = colorPalettes.map(p =>
+      p.id === id ? { ...p, baseColor: hex, scale: generateColorScale(hex) } : p
+    )
+    setColorPalettes(newPalettes)
+    recomputeSemanticSteps(newPalettes)
+  }, [colorPalettes, recomputeSemanticSteps])
 
   const updatePaletteStep = useCallback((paletteId, step, hex) => {
     setColorPalettes(prev => prev.map(p =>
@@ -164,7 +196,21 @@ export function useStore() {
   }, [])
 
   const updateSemanticToken = useCallback((tokenId, updates) => {
-    setSemanticColorTokens(prev => prev.map(t => t.id === tokenId ? { ...t, ...updates } : t))
+    setSemanticColorTokens(prev => prev.map(t =>
+      t.id === tokenId ? { ...t, ...updates, manualStep: true } : t
+    ))
+  }, [])
+
+  const addSemanticTokens = useCallback((tokens) => {
+    setSemanticColorTokens(prev => {
+      const existingIds = new Set(prev.map(t => t.id))
+      const newTokens = tokens.filter(t => !existingIds.has(t.id))
+      return [...prev, ...newTokens]
+    })
+  }, [])
+
+  const removeSemanticToken = useCallback((tokenId) => {
+    setSemanticColorTokens(prev => prev.filter(t => t.id !== tokenId))
   }, [])
 
   const updateVocabulary = useCallback((path, value) => {
@@ -186,8 +232,8 @@ export function useStore() {
     if (!trimmed || trimmed === oldStep) return
     setTypography(prev => ({
       ...prev,
-      scale:    prev.scale.map(s => s.step === oldStep ? { ...s, step: trimmed } : s),
-      semantic: prev.semantic.map(s => s.step === oldStep ? { ...s, step: trimmed } : s),
+      size:     prev.size.map(s => s.step === oldStep ? { ...s, step: trimmed } : s),
+      semantic: prev.semantic.map(s => s.size === oldStep ? { ...s, size: trimmed } : s),
     }))
   }, [])
 
@@ -210,6 +256,51 @@ export function useStore() {
     }))
   }, [])
 
+  const switchCategoryScale = useCallback((category, newScale) => {
+    if (category === 'typography') {
+      setTypography(prev => {
+        const newNames = generateStepNamesForScale(prev.size, newScale)
+        return {
+          ...prev,
+          size:     prev.size.map((s, i) => ({ ...s, step: newNames[i] })),
+          semantic: prev.semantic.map(s => {
+            const idx = prev.size.findIndex(ps => ps.step === s.size)
+            return idx >= 0 ? { ...s, size: newNames[idx] } : s
+          }),
+        }
+      })
+    } else if (category === 'spacing') {
+      setSpacing(prev => {
+        const newNames = generateStepNamesForScale(prev.scale, newScale)
+        return { ...prev, scale: prev.scale.map((s, i) => ({ ...s, step: newNames[i] })) }
+      })
+    } else if (category === 'shapes') {
+      setShapes(prev => {
+        const newNames = generateStepNamesForScale(prev.scale, newScale)
+        return {
+          ...prev,
+          scale:    prev.scale.map((s, i) => ({ ...s, step: newNames[i] })),
+          semantic: prev.semantic.map(s => {
+            const idx = prev.scale.findIndex(ps => ps.step === s.step)
+            return idx >= 0 ? { ...s, step: newNames[idx] } : s
+          }),
+        }
+      })
+    }
+    updateVocabulary(`scales.${category}`, newScale)
+  }, [updateVocabulary])
+
+  const restoreCategoryScale = useCallback((category, snapshot) => {
+    if (category === 'typography') {
+      setTypography(prev => ({ ...prev, size: snapshot.size, semantic: snapshot.semantic }))
+    } else if (category === 'spacing') {
+      setSpacing(prev => ({ ...prev, scale: snapshot.scale }))
+    } else if (category === 'shapes') {
+      setShapes(prev => ({ ...prev, scale: snapshot.scale, semantic: snapshot.semantic }))
+    }
+    updateVocabulary(`scales.${category}`, snapshot.scaleValue)
+  }, [updateVocabulary])
+
   const applyImport = useCallback(({ palettes, semanticTokens }) => {
     if (palettes)       setColorPalettes(palettes)
     if (semanticTokens) setSemanticColorTokens(semanticTokens)
@@ -231,8 +322,10 @@ export function useStore() {
   return {
     colorPalettes, semanticColorTokens, typography, spacing, shapes, vocabulary,
     updatePaletteBaseColor, updatePaletteStep, addPalette, removePalette,
-    updateSemanticToken, setTypography, setSpacing, setShapes, updateVocabulary,
+    updateSemanticToken, addSemanticTokens, removeSemanticToken, recomputeSemanticSteps,
+    setTypography, setSpacing, setShapes, updateVocabulary,
     updateTypographyStepName, updateShapeStepName, updateSpacingStepName,
+    switchCategoryScale, restoreCategoryScale,
     applyImport, exportProject, importProject,
   }
 }

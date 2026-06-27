@@ -1,4 +1,34 @@
-import { resolveSemanticColor, SCALE_STEPS, getContrastColor } from '../lib/colorUtils'
+import { resolveSemanticColor, SCALE_STEPS, getContrastColor, contrastRatio, wcagLevel } from '../lib/colorUtils'
+
+function PairingRow({ fgHex, bgHex, fgLabel, bgLabel, sans, mono }) {
+  const ratio = contrastRatio(fgHex, bgHex)
+  const level = wcagLevel(ratio)
+  const lvlColor = level === 'AAA' ? '#4ade80' : level === 'AA' ? '#86efac' : level === 'AA Large' ? '#fbbf24' : '#f87171'
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+      <div style={{ background: bgHex, borderRadius: 6, padding: '5px 12px', flexShrink: 0, width: 52, textAlign: 'center', boxShadow: '0 0 0 1px rgba(0,0,0,0.1)' }}>
+        <span style={{ color: fgHex, fontFamily: sans, fontSize: 14, fontWeight: 700, lineHeight: 1 }}>Aa</span>
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ color: 'rgba(255,255,255,0.65)', fontFamily: mono, fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fgLabel}</div>
+        <div style={{ color: 'rgba(255,255,255,0.28)', fontFamily: mono, fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bgLabel}</div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <span style={{ color: 'rgba(255,255,255,0.35)', fontFamily: mono, fontSize: 11 }}>{ratio.toFixed(2)}:1</span>
+        <span style={{ color: lvlColor, fontFamily: mono, fontSize: 10, fontWeight: 600, background: `${lvlColor}22`, borderRadius: 4, padding: '2px 6px', border: `1px solid ${lvlColor}44` }}>{level}</span>
+      </div>
+    </div>
+  )
+}
+
+function PairingGroup({ title, pairs, sans, mono, border }) {
+  return (
+    <div style={{ borderRadius: 12, border: `1px solid ${border}`, padding: '16px 20px', background: 'rgba(255,255,255,0.02)' }}>
+      <div style={{ color: 'rgba(255,255,255,0.3)', fontFamily: mono, fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>{title}</div>
+      {pairs.map((p, i) => <PairingRow key={i} {...p} sans={sans} mono={mono} />)}
+    </div>
+  )
+}
 
 export default function PreviewSection({ store }) {
   const { colorPalettes, semanticColorTokens, typography, spacing, shapes } = store
@@ -18,38 +48,46 @@ export default function PreviewSection({ store }) {
 
   function typeStyle(tokenId) {
     const token = typography.semantic.find(t => t.id === tokenId)
-    const entry = typography.scale.find(s => s.step === token?.step)
-    if (!entry) return {}
-    return { fontSize: `${entry.size}px`, fontWeight: entry.weight, lineHeight: entry.lineHeight }
+    if (!token) return {}
+    const sizeEntry = typography.size?.find(s => s.step === token.size)
+    const baseSize  = typography.baseSize ?? 16
+    return {
+      fontSize:      sizeEntry ? Math.min(sizeEntry.max * baseSize, 64) : 16,
+      fontFamily:    typography.fontFamily?.[token.family ?? 'sans'] ?? typography.fontFamily?.sans,
+      fontWeight:    token.weight  ?? 400,
+      lineHeight:    token.leading ?? 1.5,
+      letterSpacing: `${token.tracking ?? 0}em`,
+    }
   }
 
   const brandPalette = colorPalettes[0]
   const sans = typography.fontFamily.sans
   const mono = typography.fontFamily.mono
 
-  const bg     = color('color.background.default')
+  const bg     = color('color.bg.default')
   const surf   = color('color.surface.default')
   const border = color('color.border.default')
   const tp     = color('color.text.primary')
   const ts     = color('color.text.secondary')
   const td     = color('color.text.disabled')
-  const brand  = color('color.brand.default')
-  const brandH = color('color.brand.default.hover')
-  const brandS = color('color.brand.subtle')
-  const brandT = color('color.brand.text')
+  const brand  = color('color.bg.brand.solid')
+  const brandH = color('color.bg.brand.solid.hover')
+  const brandS = color('color.bg.brand.subtle')
+  const brandT = color('color.text.brand')
 
-  const successC  = color('color.success.default')
-  const successBg = color('color.success.subtle')
-  const warningC  = color('color.warning.default')
-  const warningBg = color('color.warning.subtle')
-  const dangerC   = color('color.danger.default')
-  const dangerBg  = color('color.danger.subtle')
+  const successC  = color('color.bg.success.solid')
+  const successBg = color('color.bg.success.subtle')
+  const warningC  = color('color.bg.warning.solid')
+  const warningBg = color('color.bg.warning.subtle')
+  const dangerC   = color('color.bg.danger.solid')
+  const dangerBg  = color('color.bg.danger.subtle')
 
-  const cardR  = radius('card')
-  const badgeR = radius('badge')
-  const btnR   = radius('button')
+  const cardR  = radius('radius.card')
+  const badgeR = radius('radius.badge')
+  const btnR   = radius('radius.button')
 
-  const onBrand = getContrastColor(brand)
+  const onBrand   = color('color.on.brand')
+  const onWarning = color('color.on.warning')
 
   const gap = 10
 
@@ -74,7 +112,7 @@ export default function PreviewSection({ store }) {
             {brandPalette?.name}
           </div>
           <div>
-            <div style={{ color: onBrand, fontFamily: sans, ...typeStyle('heading.xl'), lineHeight: 1, marginBottom: 8 }}>
+            <div style={{ color: onBrand, fontFamily: sans, ...typeStyle('type.heading.xl'), lineHeight: 1, marginBottom: 8 }}>
               Aa
             </div>
             <div style={{ color: onBrand, opacity: 0.6, fontFamily: mono, fontSize: 12 }}>
@@ -113,14 +151,17 @@ export default function PreviewSection({ store }) {
             {sans.split(',')[0]}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {[...typography.scale].reverse().map(e => (
-              <div key={e.step} style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
-                <div style={{ color: tp, fontSize: Math.min(e.size, 42), fontWeight: e.weight, lineHeight: 1.1, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  The quick brown fox
+            {[...(typography.size ?? [])].reverse().map(e => {
+              const baseSize = typography.baseSize ?? 16
+              return (
+                <div key={e.step} style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
+                  <div style={{ color: tp, fontSize: Math.min(e.max * baseSize, 42), fontWeight: 600, lineHeight: 1.1, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    The quick brown fox
+                  </div>
+                  <span style={{ color: td, fontSize: 10, fontFamily: mono, flexShrink: 0 }}>{e.max}rem</span>
                 </div>
-                <span style={{ color: td, fontSize: 10, fontFamily: mono, flexShrink: 0 }}>{e.size}px</span>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
 
@@ -143,9 +184,9 @@ export default function PreviewSection({ store }) {
         <div style={{ ...tile({ border: `1px solid ${border}`, padding: 24, background: bg }), fontFamily: sans }}>
           <div style={{ color: td, fontSize: 10, fontFamily: mono, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>Surfaces</div>
           {[
-            { label: 'color.background.default', bg: bg, border: border },
-            { label: 'color.surface.default',    bg: surf, border: border },
-            { label: 'color.background.subtle',  bg: color('color.background.subtle'), border: border },
+            { label: 'color.bg.default',    bg: bg, border: border },
+            { label: 'color.surface.default', bg: surf, border: border },
+            { label: 'color.bg.subtle',     bg: color('color.bg.subtle'), border: border },
           ].map(({ label, bg: b, border: bo }) => (
             <div key={label} style={{ background: b, border: `1px solid ${bo}`, borderRadius: 8, padding: '10px 14px', marginBottom: 6 }}>
               <div style={{ color: tp, fontSize: 13, fontWeight: 500 }}>Surface text</div>
@@ -203,6 +244,84 @@ export default function PreviewSection({ store }) {
         </div>
 
       </div>
+
+      {/* Accessibility — contrast pairings */}
+      <div className="mt-10">
+        <div className="flex items-baseline gap-3 mb-4">
+          <h2 className="text-xs font-semibold tracking-widest text-white/30 uppercase">Accessibility</h2>
+          <span className="text-[10px] text-white/20 font-mono">WCAG 2.1 contrast</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap }}>
+          <PairingGroup title="Core text" border={border} sans={sans} mono={mono} pairs={[
+            { fgHex: tp, bgHex: bg,   fgLabel: 'color.text.primary',   bgLabel: 'color.bg.default' },
+            { fgHex: tp, bgHex: surf, fgLabel: 'color.text.primary',   bgLabel: 'color.surface.default' },
+            { fgHex: ts, bgHex: bg,   fgLabel: 'color.text.secondary', bgLabel: 'color.bg.default' },
+            { fgHex: ts, bgHex: surf, fgLabel: 'color.text.secondary', bgLabel: 'color.surface.default' },
+            { fgHex: td, bgHex: bg,   fgLabel: 'color.text.disabled',  bgLabel: 'color.bg.default' },
+          ]} />
+          <PairingGroup title="Brand" border={border} sans={sans} mono={mono} pairs={[
+            { fgHex: onBrand, bgHex: brand,  fgLabel: 'color.on.brand',   bgLabel: 'color.bg.brand.solid' },
+            { fgHex: onBrand, bgHex: brandH, fgLabel: 'color.on.brand',   bgLabel: 'color.bg.brand.solid.hover' },
+            { fgHex: brandT,  bgHex: bg,     fgLabel: 'color.text.brand', bgLabel: 'color.bg.default' },
+            { fgHex: brandT,  bgHex: brandS, fgLabel: 'color.text.brand', bgLabel: 'color.bg.brand.subtle' },
+          ]} />
+          <PairingGroup title="Status — solid" border={border} sans={sans} mono={mono} pairs={[
+            { fgHex: color('color.on.success'), bgHex: successC, fgLabel: 'color.on.success', bgLabel: 'color.bg.success.solid' },
+            { fgHex: color('color.on.warning'), bgHex: warningC, fgLabel: 'color.on.warning', bgLabel: 'color.bg.warning.solid' },
+            { fgHex: color('color.on.danger'),  bgHex: dangerC,  fgLabel: 'color.on.danger',  bgLabel: 'color.bg.danger.solid' },
+          ]} />
+          <PairingGroup title="Status — subtle" border={border} sans={sans} mono={mono} pairs={[
+            { fgHex: color('color.text.success'), bgHex: successBg, fgLabel: 'color.text.success', bgLabel: 'color.bg.success.subtle' },
+            { fgHex: color('color.text.warning'), bgHex: warningBg, fgLabel: 'color.text.warning', bgLabel: 'color.bg.warning.subtle' },
+            { fgHex: color('color.text.danger'),  bgHex: dangerBg,  fgLabel: 'color.text.danger',  bgLabel: 'color.bg.danger.subtle' },
+          ]} />
+        </div>
+      </div>
+
+      {/* Color rationale doc */}
+      <div className="mt-16 border-t border-white/[0.06] pt-12">
+        <div className="max-w-2xl">
+          <h2 className="text-xs font-semibold tracking-widest text-white/30 uppercase mb-6">Color Rationale</h2>
+
+          <div className="space-y-8 text-[13px] leading-relaxed text-white/50">
+
+            <div>
+              <div className="text-white/80 font-medium mb-1">Token structure</div>
+              <p>Every color token follows the pattern <code className="text-[11px] font-mono text-white/40 bg-white/[0.05] px-1.5 py-0.5 rounded">color.{'{role}'}.{'{variant}'}[.emphasis][.state]</code>. The role describes <em>what the color does</em> — not what it looks like. This means tokens stay stable even when the underlying palette changes.</p>
+            </div>
+
+            <div>
+              <div className="text-white/80 font-medium mb-2">Roles</div>
+              <div className="space-y-2">
+                {[
+                  { role: 'bg', desc: 'Page and section backgrounds. Neutral by default; tinted variants signal brand or status context.' },
+                  { role: 'surface', desc: 'Elevated layers — cards, panels, modals. Sits above bg, typically white or near-white.' },
+                  { role: 'border', desc: 'Dividers and outlines. Subtle for structure, stronger for emphasis, colored for status.' },
+                  { role: 'text', desc: 'All readable content. Hierarchy through opacity steps: primary → secondary → disabled.' },
+                  { role: 'on', desc: 'Text and icons placed directly on a solid fill. Auto-paired to guarantee contrast.' },
+                ].map(({ role, desc }) => (
+                  <div key={role} className="flex gap-3">
+                    <code className="text-[11px] font-mono text-white/40 bg-white/[0.05] px-1.5 py-0.5 rounded h-fit flex-shrink-0 mt-0.5">{role}</code>
+                    <span>{desc}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className="text-white/80 font-medium mb-1">The subtle / solid split</div>
+              <p>Each palette variant ships two background strengths. <strong className="text-white/70">Subtle</strong> (step 100) is a light tint — used for hover states, callout backgrounds, and status banners. <strong className="text-white/70">Solid</strong> (step 500) is the full-chroma fill — used for buttons, badges, and interactive elements. Hover and active states shift one step darker (600, 700).</p>
+            </div>
+
+            <div>
+              <div className="text-white/80 font-medium mb-1">Guaranteed contrast</div>
+              <p>The <code className="text-[11px] font-mono text-white/40 bg-white/[0.05] px-1.5 py-0.5 rounded">on.*</code> tokens are automatically assigned the lightest or darkest step of their palette — whichever achieves higher contrast against the solid fill. This means changing a palette hue never silently breaks foreground legibility.</p>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
     </div>
   )
 }

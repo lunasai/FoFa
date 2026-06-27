@@ -1,5 +1,6 @@
 import { resolveSemanticColor, SCALE_STEPS } from './colorUtils'
 import { deriveColorTokenName, deriveTypographyTokenName, DEFAULT_VOCABULARY, formatColorStep } from './vocabularyUtils'
+import { computeClamp } from './typographyUtils'
 
 export function buildTokensJson(store) {
   const { colorPalettes, semanticColorTokens, typography, spacing, shapes, vocabulary = DEFAULT_VOCABULARY } = store
@@ -44,25 +45,26 @@ export function buildTokensJson(store) {
   })
 
   // Typography
-  tokens.typography = {
-    fontFamily: typography.fontFamily,
-    scale: {},
-    semantic: {},
-  }
-  typography.scale.forEach(entry => {
-    tokens.typography.scale[entry.step] = {
-      size: { $value: `${entry.size}px`, $type: 'dimension' },
-      lineHeight: { $value: entry.lineHeight, $type: 'number' },
-      weight: { $value: entry.weight, $type: 'fontWeight' },
+  const typoVp   = typography.viewport ?? { min: 320, max: 1440 }
+  const typoBase = typography.baseSize ?? 16
+  tokens.typography = { fontFamily: typography.fontFamily, size: {}, semantic: {} }
+  ;(typography.size ?? []).forEach(entry => {
+    tokens.typography.size[entry.step] = {
+      $value: computeClamp(entry, typoVp, typoBase),
+      $type: 'dimension',
+      min: { $value: `${entry.min}rem` },
+      max: { $value: `${entry.max}rem` },
     }
   })
-  typography.semantic.forEach(entry => {
-    const scaleEntry = typography.scale.find(s => s.step === entry.step)
+  ;(typography.semantic ?? []).forEach(entry => {
+    const sizeEntry = (typography.size ?? []).find(s => s.step === entry.size)
     tokens.typography.semantic[entry.id] = {
-      $value: entry.step,
       $description: entry.description,
-      size: scaleEntry ? `${scaleEntry.size}px` : undefined,
-      weight: scaleEntry ? scaleEntry.weight : undefined,
+      size:     { $value: sizeEntry ? computeClamp(sizeEntry, typoVp, typoBase) : entry.size, $ref: `{typography.size.${entry.size}}` },
+      family:   { $value: typography.fontFamily?.[entry.family] ?? entry.family, $ref: `{typography.fontFamily.${entry.family ?? 'sans'}}` },
+      weight:   { $value: entry.weight,   $type: 'fontWeight' },
+      leading:  { $value: entry.leading,  $type: 'number' },
+      tracking: { $value: `${entry.tracking}em`, $type: 'dimension' },
     }
   })
 
@@ -161,24 +163,25 @@ export function buildDesignMd(store) {
   lines.push('')
   lines.push('## Typography')
   lines.push('')
+  const mdVp = typography.viewport ?? { min: 320, max: 1440 }
+  const mdBase = typography.baseSize ?? 16
   lines.push(`- **Sans font:** \`${typography.fontFamily.sans}\``)
   lines.push(`- **Mono font:** \`${typography.fontFamily.mono}\``)
+  lines.push(`- **Base size:** ${mdBase}px  |  **Viewport:** ${mdVp.min}px → ${mdVp.max}px`)
   lines.push('')
-  lines.push('### Type Scale')
+  lines.push('### Size Scale')
   lines.push('')
-  typography.scale.forEach(entry => {
-    lines.push(`- \`typography.scale.${entry.step}\` — ${entry.size}px / line-height ${entry.lineHeight} / weight ${entry.weight}`)
+  ;(typography.size ?? []).forEach(entry => {
+    lines.push(`- \`typography.size.${entry.step}\` — ${computeClamp(entry, mdVp, mdBase)}`)
   })
   lines.push('')
   lines.push('### Semantic Type Tokens')
   lines.push('')
   lines.push('Use these roles in components, not raw scale values.')
   lines.push('')
-  typography.semantic.forEach(entry => {
-    const scaleEntry = typography.scale.find(s => s.step === entry.step)
-    const detail = scaleEntry ? `${scaleEntry.size}px / weight ${scaleEntry.weight}` : entry.step
+  ;(typography.semantic ?? []).forEach(entry => {
     const name = deriveTypographyTokenName(entry.concept, vocabulary)
-    lines.push(`- \`${name}\` — ${detail} (→ \`${entry.step}\`) — ${entry.description}`)
+    lines.push(`- \`${name}\` — size: ${entry.size} / family: ${entry.family ?? 'sans'} / weight: ${entry.weight} / leading: ${entry.leading} / tracking: ${entry.tracking}em — ${entry.description}`)
   })
   lines.push('')
 

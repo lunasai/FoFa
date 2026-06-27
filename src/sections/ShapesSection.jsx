@@ -16,7 +16,7 @@ function SemanticTokenRow({ entry, shapes, onUpdate }) {
         style={{ borderRadius: `${previewRadius}px` }}
       />
       <div className="flex-1">
-        <div className="text-xs font-mono text-white/80">borderRadius.{entry.id}</div>
+        <div className="text-xs font-mono text-white/80">{entry.id}</div>
         <div className="text-[11px] text-white/30">{entry.description}</div>
       </div>
       <div className="text-xs text-white/30 font-mono">
