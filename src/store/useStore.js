@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { generateColorScale, computeAutoConfig } from '../lib/colorUtils'
 import { DEFAULT_VOCABULARY, generateStepNamesForScale } from '../lib/vocabularyUtils'
 
@@ -195,6 +195,8 @@ function applyAutoSteps(tokens, palettes) {
   })
 }
 
+const MAX_HISTORY = 50
+
 export function useStore() {
   const [colorPalettes, setColorPalettes]             = useState(DEFAULT_COLOR_PALETTES)
   const [semanticColorTokens, setSemanticColorTokens] = useState(() =>
@@ -203,12 +205,61 @@ export function useStore() {
   const [typography, setTypography]                   = useState(DEFAULT_TYPOGRAPHY)
   const [spacing, setSpacing]                         = useState(DEFAULT_SPACING)
   const [shapes, setShapes]                           = useState(DEFAULT_SHAPES)
-  const [vocabulary, setVocabulary] = useState(DEFAULT_VOCABULARY)
+  const [vocabulary, setVocabulary]                   = useState(DEFAULT_VOCABULARY)
+
+  // ── History ───────────────────────────────────────────────────────────────
+  // currentRef always holds the latest state so pushSnapshot/undo/redo can be
+  // stable callbacks with empty deps — no stale-closure issues.
+  const currentRef = useRef(null)
+  currentRef.current = { colorPalettes, semanticColorTokens, typography, spacing, shapes, vocabulary }
+
+  const [history, setHistory] = useState({ past: [], future: [] })
+  const historyRef = useRef(history)
+  historyRef.current = history
+
+  const pushSnapshot = useCallback(() => {
+    const snap = { ...currentRef.current }
+    setHistory(h => ({
+      past: [...h.past.slice(-(MAX_HISTORY - 1)), snap],
+      future: [],
+    }))
+  }, [])
+
+  const undo = useCallback(() => {
+    const h = historyRef.current
+    if (h.past.length === 0) return
+    const snap = h.past[h.past.length - 1]
+    const current = { ...currentRef.current }
+    setColorPalettes(snap.colorPalettes)
+    setSemanticColorTokens(snap.semanticColorTokens)
+    setTypography(snap.typography)
+    setSpacing(snap.spacing)
+    setShapes(snap.shapes)
+    setVocabulary(snap.vocabulary)
+    setHistory({ past: h.past.slice(0, -1), future: [current, ...h.future.slice(0, MAX_HISTORY - 1)] })
+  }, [])
+
+  const redo = useCallback(() => {
+    const h = historyRef.current
+    if (h.future.length === 0) return
+    const snap = h.future[0]
+    const current = { ...currentRef.current }
+    setColorPalettes(snap.colorPalettes)
+    setSemanticColorTokens(snap.semanticColorTokens)
+    setTypography(snap.typography)
+    setSpacing(snap.spacing)
+    setShapes(snap.shapes)
+    setVocabulary(snap.vocabulary)
+    setHistory({ past: [...h.past.slice(-(MAX_HISTORY - 1)), current], future: h.future.slice(1) })
+  }, [])
+
+  // ── Color ─────────────────────────────────────────────────────────────────
 
   const recomputeSemanticSteps = useCallback((updatedPalettes) => {
     setSemanticColorTokens(prev => applyAutoSteps(prev, updatedPalettes))
   }, [])
 
+  // Real-time — component calls pushSnapshot on picker open/blur
   const updatePaletteBaseColor = useCallback((id, hex) => {
     const newPalettes = colorPalettes.map(p =>
       p.id === id ? { ...p, baseColor: hex, scale: generateColorScale(hex) } : p
@@ -217,6 +268,7 @@ export function useStore() {
     recomputeSemanticSteps(newPalettes)
   }, [colorPalettes, recomputeSemanticSteps])
 
+  // Real-time — component calls pushSnapshot on blur
   const updatePaletteStep = useCallback((paletteId, step, hex) => {
     setColorPalettes(prev => prev.map(p =>
       p.id === paletteId ? { ...p, scale: { ...p.scale, [step]: hex } } : p
@@ -224,31 +276,36 @@ export function useStore() {
   }, [])
 
   const addPalette = useCallback((name, baseColor) => {
+    pushSnapshot()
     const id = name.toLowerCase().replace(/\s+/g, '-')
     setColorPalettes(prev => [...prev, { id, name, baseColor, scale: generateColorScale(baseColor) }])
-  }, [])
+  }, [pushSnapshot])
 
   const removePalette = useCallback((id) => {
+    pushSnapshot()
     setColorPalettes(prev => prev.filter(p => p.id !== id))
-  }, [])
+  }, [pushSnapshot])
 
   const updateSemanticToken = useCallback((tokenId, updates) => {
+    pushSnapshot()
     setSemanticColorTokens(prev => prev.map(t =>
       t.id === tokenId ? { ...t, ...updates, manualStep: true } : t
     ))
-  }, [])
+  }, [pushSnapshot])
 
   const addSemanticTokens = useCallback((tokens) => {
+    pushSnapshot()
     setSemanticColorTokens(prev => {
       const existingIds = new Set(prev.map(t => t.id))
       const newTokens = tokens.filter(t => !existingIds.has(t.id))
       return [...prev, ...newTokens]
     })
-  }, [])
+  }, [pushSnapshot])
 
   const removeSemanticToken = useCallback((tokenId) => {
+    pushSnapshot()
     setSemanticColorTokens(prev => prev.filter(t => t.id !== tokenId))
-  }, [])
+  }, [pushSnapshot])
 
   const updateVocabulary = useCallback((path, value) => {
     setVocabulary(prev => {
@@ -264,7 +321,10 @@ export function useStore() {
     })
   }, [])
 
+  // ── Typography ────────────────────────────────────────────────────────────
+
   const addFontFamily = useCallback(() => {
+    pushSnapshot()
     setTypography(prev => {
       const keys = Object.keys(prev.fontFamily)
       let key = 'untitled'
@@ -272,14 +332,15 @@ export function useStore() {
       while (keys.includes(key)) { n++; key = `untitled-${n}` }
       return { ...prev, fontFamily: { ...prev.fontFamily, [key]: 'system-ui, sans-serif' } }
     })
-  }, [])
+  }, [pushSnapshot])
 
+  // Real-time — component calls pushSnapshot on blur
   const updateFontFamilyStack = useCallback((key, stack) => {
     setTypography(prev => ({ ...prev, fontFamily: { ...prev.fontFamily, [key]: stack } }))
   }, [])
 
-  // Assign a concrete typeface (from the Google Fonts picker or a pasted URL) to a family slot.
   const selectFontFamily = useCallback((key, payload) => {
+    pushSnapshot()
     setTypography(prev => ({
       ...prev,
       fontFamily: { ...prev.fontFamily, [key]: payload.stack },
@@ -288,10 +349,11 @@ export function useStore() {
         [key]: { family: payload.family, url: payload.url, category: payload.category, source: payload.source },
       },
     }))
-  }, [])
+  }, [pushSnapshot])
 
   const renameFontFamily = useCallback((oldKey, rawNew) => {
     const newKey = slugifyFamilyKey(rawNew)
+    pushSnapshot()
     setTypography(prev => {
       if (!newKey || newKey === oldKey) return prev
       if (Object.prototype.hasOwnProperty.call(prev.fontFamily, newKey)) return prev
@@ -305,9 +367,10 @@ export function useStore() {
       )
       return { ...prev, fontFamily, fontMeta, semantic }
     })
-  }, [])
+  }, [pushSnapshot])
 
   const removeFontFamily = useCallback((key) => {
+    pushSnapshot()
     setTypography(prev => {
       const keys = Object.keys(prev.fontFamily)
       if (keys.length <= 1) return prev
@@ -321,49 +384,59 @@ export function useStore() {
       )
       return { ...prev, fontFamily, fontMeta, semantic }
     })
-  }, [])
+  }, [pushSnapshot])
 
   const addTypographySemantic = useCallback((token) => {
+    pushSnapshot()
     setTypography(prev => {
       if (prev.semantic.some(s => s.id === token.id)) return prev
       return { ...prev, semantic: [...prev.semantic, token] }
     })
-  }, [])
+  }, [pushSnapshot])
 
   const removeTypographySemantic = useCallback((id) => {
+    pushSnapshot()
     setTypography(prev => ({ ...prev, semantic: prev.semantic.filter(s => s.id !== id) }))
-  }, [])
+  }, [pushSnapshot])
 
   const updateTypographyStepName = useCallback((oldStep, newStep) => {
     const trimmed = newStep.trim()
     if (!trimmed || trimmed === oldStep) return
+    pushSnapshot()
     setTypography(prev => ({
       ...prev,
       size:     prev.size.map(s => s.step === oldStep ? { ...s, step: trimmed } : s),
       semantic: prev.semantic.map(s => s.size === oldStep ? { ...s, size: trimmed } : s),
     }))
-  }, [])
+  }, [pushSnapshot])
+
+  // ── Shapes ────────────────────────────────────────────────────────────────
 
   const updateShapeStepName = useCallback((oldStep, newStep) => {
     const trimmed = newStep.trim()
     if (!trimmed || trimmed === oldStep) return
+    pushSnapshot()
     setShapes(prev => ({
       ...prev,
       scale:    prev.scale.map(s => s.step === oldStep ? { ...s, step: trimmed } : s),
       semantic: prev.semantic.map(s => s.step === oldStep ? { ...s, step: trimmed } : s),
     }))
-  }, [])
+  }, [pushSnapshot])
+
+  // ── Spacing ───────────────────────────────────────────────────────────────
 
   const updateSpacingStepName = useCallback((oldStep, newStep) => {
     const trimmed = newStep.trim()
     if (!trimmed || trimmed === oldStep) return
+    pushSnapshot()
     setSpacing(prev => ({
       ...prev,
       scale: prev.scale.map(s => s.step === oldStep ? { ...s, step: trimmed } : s),
     }))
-  }, [])
+  }, [pushSnapshot])
 
   const addBreakpoint = useCallback(() => {
+    pushSnapshot()
     setSpacing(prev => {
       const ids = new Set(prev.breakpoints.map(b => b.id))
       let n = prev.breakpoints.length + 1
@@ -382,8 +455,9 @@ export function useStore() {
         }],
       }
     })
-  }, [])
+  }, [pushSnapshot])
 
+  // Real-time — component calls pushSnapshot on blur
   const updateBreakpoint = useCallback((id, patch) => {
     setSpacing(prev => ({
       ...prev,
@@ -393,21 +467,26 @@ export function useStore() {
 
   const renameBreakpoint = useCallback((oldId, raw) => {
     const newId = slugifyFamilyKey(raw)
+    pushSnapshot()
     setSpacing(prev => {
       if (!newId || newId === oldId) return prev
       if (prev.breakpoints.some(b => b.id === newId)) return prev
       return { ...prev, breakpoints: prev.breakpoints.map(b => b.id === oldId ? { ...b, id: newId } : b) }
     })
-  }, [])
+  }, [pushSnapshot])
 
   const removeBreakpoint = useCallback((id) => {
+    pushSnapshot()
     setSpacing(prev => {
       if (prev.breakpoints.length <= 1) return prev
       return { ...prev, breakpoints: prev.breakpoints.filter(b => b.id !== id) }
     })
-  }, [])
+  }, [pushSnapshot])
+
+  // ── Vocabulary / scale ────────────────────────────────────────────────────
 
   const switchCategoryScale = useCallback((category, newScale) => {
+    pushSnapshot()
     if (category === 'typography') {
       setTypography(prev => {
         const newNames = generateStepNamesForScale(prev.size, newScale)
@@ -439,9 +518,10 @@ export function useStore() {
       })
     }
     updateVocabulary(`scales.${category}`, newScale)
-  }, [updateVocabulary])
+  }, [pushSnapshot, updateVocabulary])
 
   const restoreCategoryScale = useCallback((category, snapshot) => {
+    pushSnapshot()
     if (category === 'typography') {
       setTypography(prev => ({ ...prev, size: snapshot.size, semantic: snapshot.semantic }))
     } else if (category === 'spacing') {
@@ -450,12 +530,15 @@ export function useStore() {
       setShapes(prev => ({ ...prev, scale: snapshot.scale, semantic: snapshot.semantic }))
     }
     updateVocabulary(`scales.${category}`, snapshot.scaleValue)
-  }, [updateVocabulary])
+  }, [pushSnapshot, updateVocabulary])
+
+  // ── Import / export ───────────────────────────────────────────────────────
 
   const applyImport = useCallback(({ palettes, semanticTokens }) => {
+    pushSnapshot()
     if (palettes)       setColorPalettes(palettes)
     if (semanticTokens) setSemanticColorTokens(semanticTokens)
-  }, [])
+  }, [pushSnapshot])
 
   const exportProject = useCallback(() => {
     const typographyOut = { ...typography, viewport: deriveViewport(spacing.breakpoints, typography.viewportAnchors) }
@@ -463,6 +546,7 @@ export function useStore() {
   }, [colorPalettes, semanticColorTokens, typography, spacing, shapes, vocabulary])
 
   const importProject = useCallback((data) => {
+    pushSnapshot()
     if (data.colorPalettes)        setColorPalettes(data.colorPalettes)
     if (data.semanticColorTokens)  setSemanticColorTokens(data.semanticColorTokens)
     if (data.typography)           setTypography(data.typography)
@@ -472,7 +556,7 @@ export function useStore() {
     }
     if (data.shapes)               setShapes(data.shapes)
     if (data.vocabulary)           setVocabulary(data.vocabulary)
-  }, [])
+  }, [pushSnapshot])
 
   // Typography's fluid range is derived from the breakpoint set (single source of truth).
   const typographyDerived = { ...typography, viewport: deriveViewport(spacing.breakpoints, typography.viewportAnchors) }
@@ -488,5 +572,9 @@ export function useStore() {
     addBreakpoint, updateBreakpoint, renameBreakpoint, removeBreakpoint,
     switchCategoryScale, restoreCategoryScale,
     applyImport, exportProject, importProject,
+    pushSnapshot,
+    undo, redo,
+    canUndo: history.past.length > 0,
+    canRedo: history.future.length > 0,
   }
 }

@@ -3,6 +3,7 @@ import { Plus, X } from 'lucide-react'
 import clsx from 'clsx'
 import { StepNameEditor } from '../components/StepNameEditor'
 import { ScaleTable, ScaleRow, InlineNameEdit } from '../components/ScaleTable'
+import { SectionHeading } from '../components/SectionHeading'
 
 const REM_BASE = 16
 const PREVIEW_H = 112 // h-28
@@ -151,7 +152,11 @@ export default function SpacingSection({ store }) {
       {/* Grid + breakpoints (integrated) */}
       <section className="mb-12">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-xs font-semibold tracking-widest text-white/30 uppercase">Grid &amp; Breakpoints</h2>
+          <SectionHeading
+            label="Grid & Breakpoints"
+            techAlias="breakpoint tokens"
+            tooltip="Viewport width definitions that drive the responsive grid (columns, gutter, margin) and the fluid type scaling range. Referenced by both the layout system and the type scale's clamp() calculations."
+          />
           <button
             onClick={addBreakpoint}
             className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors border border-white/10 hover:border-white/20 rounded-lg px-3 py-1.5"
@@ -243,12 +248,16 @@ export default function SpacingSection({ store }) {
       {/* Spacing scale */}
       <section>
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-xs font-semibold tracking-widest text-white/30 uppercase">Spacing</h2>
+          <SectionHeading
+            label="Spacing"
+            techAlias="primitive tokens"
+            tooltip="Base spacing values used directly in layouts or referenced by component-level semantic tokens. Exported as CSS custom properties (e.g. var(--spacing-md))."
+          />
           <button
             onClick={addStep}
             className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors border border-white/10 hover:border-white/20 rounded-lg px-3 py-1.5"
           >
-            <Plus size={12} /> Add step
+            <Plus size={12} /> Add spacing
           </button>
         </div>
 

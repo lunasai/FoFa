@@ -2,6 +2,7 @@ import { useState } from 'react'
 import clsx from 'clsx'
 import { Plus, X, ChevronDown } from 'lucide-react'
 import { StepNameEditor } from '../components/StepNameEditor'
+import { SectionHeading } from '../components/SectionHeading'
 
 const inputCls = 'bg-white/[0.05] border border-white/10 rounded-lg px-2 py-1 text-xs text-white text-center outline-none focus:border-white/30'
 const dropdownCls = 'bg-white/[0.05] border border-white/10 rounded-lg px-2 py-1 text-xs text-white outline-none focus:border-white/30 font-mono cursor-pointer'
@@ -28,27 +29,22 @@ function RadiusCard({ entry, onValueChange, onRename, onRemove, isAnchor }) {
         </button>
       )}
 
-      {/* Shape preview */}
-      <div className="flex justify-center mb-4">
-        <div
-          className="w-20 h-20 bg-white/10 border border-white/10"
-          style={{ borderRadius: `${radiusPreview(entry.value, 80)}px` }}
-        />
-      </div>
-
       {/* Name */}
-      <div className="flex justify-center mb-2">
+      <div className="flex justify-center mb-3">
         <StepNameEditor value={entry.step} onChange={n => onRename(entry.step, n)} />
       </div>
 
-      {/* Description */}
-      <div className="text-[11px] text-white/30 text-center mb-3 min-h-[14px]">{entry.description}</div>
+      {/* Shape preview — full width, taller */}
+      <div
+        className="w-full h-24 bg-white/10 border border-white/10 mb-3"
+        style={{ borderRadius: `${radiusPreview(entry.value, 96)}px` }}
+      />
 
-      {/* Value */}
+      {/* Value — close to preview */}
       {isPill ? (
-        <div className="text-center text-xs text-white/30 font-mono">∞ pill</div>
+        <div className="text-center text-xs text-white/30 font-mono mb-2">∞ pill</div>
       ) : (
-        <div className="flex items-center gap-2 justify-center">
+        <div className="flex items-center gap-2 justify-center mb-2">
           <input
             type="number"
             value={entry.value}
@@ -61,6 +57,9 @@ function RadiusCard({ entry, onValueChange, onRename, onRemove, isAnchor }) {
           <span className="text-xs text-white/30">px</span>
         </div>
       )}
+
+      {/* Description — quietest */}
+      <div className="text-[10px] text-white/20 text-center min-h-[14px]">{entry.description}</div>
     </div>
   )
 }
@@ -303,7 +302,11 @@ export default function ShapesSection({ store }) {
       {/* Radius scale */}
       <section className="mb-10">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xs font-semibold tracking-widest text-white/30 uppercase">Radius Scale</h2>
+          <SectionHeading
+            label="Radius Scale"
+            techAlias="primitive tokens"
+            tooltip="Raw border-radius values forming your shape vocabulary. Each named step is the source of truth that shape role tokens reference — change a step here and every assigned component updates."
+          />
           <button
             onClick={addRadiusStep}
             className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors border border-white/10 hover:border-white/20 rounded-lg px-3 py-1.5"
@@ -329,7 +332,11 @@ export default function ShapesSection({ store }) {
       {/* Semantic tokens */}
       <section>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xs font-semibold tracking-widest text-white/30 uppercase">Semantic Tokens</h2>
+          <SectionHeading
+            label="Shape Roles"
+            techAlias="semantic tokens"
+            tooltip="Border-radius values bound to specific UI components — button, input, card, modal. They reference radius scale steps so a single scale change reshapes every assigned component at once."
+          />
           <button
             onClick={() => setShowTokenModal(true)}
             className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors border border-white/10 hover:border-white/20 rounded-lg px-3 py-1.5"

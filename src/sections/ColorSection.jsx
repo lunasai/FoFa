@@ -1,8 +1,39 @@
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, ChevronDown, ChevronUp, X } from 'lucide-react'
+import { Plus, ChevronDown, ChevronUp, X } from 'lucide-react'
 import clsx from 'clsx'
-import { SCALE_STEPS, isValidHex, getContrastColor, resolveSemanticColor, computeAutoConfig } from '../lib/colorUtils'
+import { SCALE_STEPS, isValidHex, getContrastColor, resolveSemanticColor, computeAutoConfig, contrastRatio, wcagLevel } from '../lib/colorUtils'
 import { ColorPickerPopover } from '../components/ColorPicker'
+import { SectionHeading } from '../components/SectionHeading'
+
+function PairingRow({ fgHex, bgHex, fgLabel, bgLabel, sans, mono }) {
+  const ratio = contrastRatio(fgHex, bgHex)
+  const level = wcagLevel(ratio)
+  const lvlColor = level === 'AAA' ? '#4ade80' : level === 'AA' ? '#86efac' : level === 'AA Large' ? '#fbbf24' : '#f87171'
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+      <div style={{ background: bgHex, borderRadius: 6, padding: '5px 12px', flexShrink: 0, width: 52, textAlign: 'center', boxShadow: '0 0 0 1px rgba(0,0,0,0.1)' }}>
+        <span style={{ color: fgHex, fontFamily: sans, fontSize: 14, fontWeight: 700, lineHeight: 1 }}>Aa</span>
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ color: 'rgba(255,255,255,0.65)', fontFamily: mono, fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fgLabel}</div>
+        <div style={{ color: 'rgba(255,255,255,0.28)', fontFamily: mono, fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bgLabel}</div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <span style={{ color: 'rgba(255,255,255,0.35)', fontFamily: mono, fontSize: 11 }}>{ratio.toFixed(2)}:1</span>
+        <span style={{ color: lvlColor, fontFamily: mono, fontSize: 10, fontWeight: 600, background: `${lvlColor}22`, borderRadius: 4, padding: '2px 6px', border: `1px solid ${lvlColor}44` }}>{level}</span>
+      </div>
+    </div>
+  )
+}
+
+function PairingGroup({ title, pairs, sans, mono }) {
+  return (
+    <div style={{ borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)', padding: '16px 20px', background: 'rgba(255,255,255,0.02)' }}>
+      <div style={{ color: 'rgba(255,255,255,0.3)', fontFamily: mono, fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>{title}</div>
+      {pairs.map((p, i) => <PairingRow key={i} {...p} sans={sans} mono={mono} />)}
+    </div>
+  )
+}
 
 function templateDefsForPalette(paletteId) {
   const p = paletteId
@@ -95,7 +126,7 @@ function TokenWizardModal({ palettes, existingTokens, onAdd, onClose }) {
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-white/[0.06]">
-          <h2 className="text-sm font-semibold text-white">Add semantic token</h2>
+          <h2 className="text-sm font-semibold text-white">Add color role</h2>
           <button onClick={onClose} className="text-white/30 hover:text-white/70 transition-colors"><X size={16} /></button>
         </div>
 
@@ -253,7 +284,7 @@ function TokenWizardModal({ palettes, existingTokens, onAdd, onClose }) {
               disabled={checked.size === 0 || templates.length === 0}
               className="text-xs font-medium text-white bg-white/10 hover:bg-white/15 disabled:opacity-30 disabled:cursor-not-allowed px-4 py-1.5 rounded-lg transition-colors"
             >
-              Add {checked.size > 0 ? `${checked.size} ` : ''}token{checked.size !== 1 ? 's' : ''}
+              Add {checked.size > 0 ? `${checked.size} ` : ''}role{checked.size !== 1 ? 's' : ''}
             </button>
           ) : (
             <button
@@ -261,7 +292,7 @@ function TokenWizardModal({ palettes, existingTokens, onAdd, onClose }) {
               disabled={!customSuffix.trim() || existingIds.has(`color.${customSuffix.trim()}`)}
               className="text-xs font-medium text-white bg-white/10 hover:bg-white/15 disabled:opacity-30 disabled:cursor-not-allowed px-4 py-1.5 rounded-lg transition-colors"
             >
-              Add token
+              Add color role
             </button>
           )}
         </div>
@@ -362,14 +393,6 @@ function PaletteRow({ palette, onBaseColorChange, onStepChange, onRemove, canRem
           >
             {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
-          {canRemove && (
-            <button
-              onClick={() => onRemove(palette.id)}
-              className="text-white/20 hover:text-red-400 transition-colors p-1"
-            >
-              <Trash2 size={14} />
-            </button>
-          )}
         </div>
       </div>
 
@@ -398,6 +421,18 @@ function PaletteRow({ palette, onBaseColorChange, onStepChange, onRemove, canRem
                 </div>
               ))}
             </div>
+
+            {/* Delete */}
+            {canRemove && (
+              <div className="pt-3 flex justify-end">
+                <button
+                  onClick={() => onRemove(palette.id)}
+                  className="flex items-center gap-1.5 text-[11px] text-white/20 hover:text-red-400 transition-colors"
+                >
+                  <X size={12} /> Remove palette
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -429,7 +464,7 @@ function SemanticTokenRow({ token, palettes, onUpdate, onRemove }) {
       {/* Remove */}
       {onRemove && (
         <button onClick={() => onRemove(token.id)} className="text-white/15 hover:text-red-400 transition-colors p-1 flex-shrink-0">
-          <Trash2 size={12} />
+          <X size={12} />
         </button>
       )}
 
@@ -471,7 +506,35 @@ function SemanticTokenRow({ token, palettes, onUpdate, onRemove }) {
 }
 
 export default function ColorSection({ store }) {
-  const { colorPalettes, semanticColorTokens, updatePaletteBaseColor, updatePaletteStep, addPalette, removePalette, updateSemanticToken, addSemanticTokens, removeSemanticToken } = store
+  const { colorPalettes, semanticColorTokens, typography, updatePaletteBaseColor, updatePaletteStep, addPalette, removePalette, updateSemanticToken, addSemanticTokens, removeSemanticToken } = store
+
+  function color(tokenId) {
+    const token = semanticColorTokens.find(t => t.id === tokenId)
+    if (!token) return '#cccccc'
+    return resolveSemanticColor(token, colorPalettes)
+  }
+
+  const familyKeys = Object.keys(typography?.fontFamily ?? {})
+  const sans = typography?.fontFamily?.sans ?? typography?.fontFamily?.[familyKeys[0]] ?? 'system-ui, sans-serif'
+  const mono = typography?.fontFamily?.mono ?? typography?.fontFamily?.[familyKeys.find(k => /mono/i.test(k))] ?? 'ui-monospace, monospace'
+
+  const bg     = color('color.bg.default')
+  const surf   = color('color.surface.default')
+  const border = color('color.border.default')
+  const tp     = color('color.text.primary')
+  const ts     = color('color.text.secondary')
+  const td     = color('color.text.disabled')
+  const brand  = color('color.bg.brand.solid')
+  const brandH = color('color.bg.brand.solid.hover')
+  const brandS = color('color.bg.brand.subtle')
+  const brandT = color('color.text.brand')
+  const onBrand   = color('color.on.brand')
+  const successC  = color('color.bg.success.solid')
+  const warningC  = color('color.bg.warning.solid')
+  const dangerC   = color('color.bg.danger.solid')
+  const successBg = color('color.bg.success.subtle')
+  const warningBg = color('color.bg.warning.subtle')
+  const dangerBg  = color('color.bg.danger.subtle')
   const [newName, setNewName] = useState('')
   const [newColor, setNewColor] = useState('#6366f1')
   const [showAddForm, setShowAddForm] = useState(false)
@@ -529,13 +592,17 @@ export default function ColorSection({ store }) {
       {/* Palettes */}
       <section className="mb-10">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xs font-semibold tracking-widest text-white/30 uppercase">Primitive Scales</h2>
+          <SectionHeading
+            label="Color Palettes"
+            techAlias="primitive tokens"
+            tooltip="Raw color values organized as named scales (50–900). In the DTCG spec these are global tokens — the source of truth every color role references. Change a palette and all mapped roles update automatically."
+          />
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowAddForm(v => !v)}
               className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors border border-white/10 hover:border-white/20 rounded-lg px-3 py-1.5"
             >
-              <Plus size={12} /> Add scale
+              <Plus size={12} /> Add palette
             </button>
           </div>
         </div>
@@ -575,12 +642,16 @@ export default function ColorSection({ store }) {
       {/* Semantic tokens */}
       <section>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xs font-semibold tracking-widest text-white/30 uppercase">Semantic Tokens</h2>
+          <SectionHeading
+            label="Color Roles"
+            techAlias="semantic tokens"
+            tooltip="Colors bound to a specific UI purpose — background, text, border, surface. They reference palette steps, not raw hex values, so swapping a palette reshades your entire UI in one step."
+          />
           <button
             onClick={() => setShowWizard(true)}
             className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors border border-white/10 hover:border-white/20 rounded-lg px-3 py-1.5"
           >
-            <Plus size={12} /> Add token
+            <Plus size={12} /> Add color role
           </button>
         </div>
 
@@ -611,13 +682,45 @@ export default function ColorSection({ store }) {
         />
       )}
 
+      {/* Accessibility — contrast pairings */}
+      <section className="mt-10">
+        <div className="flex items-baseline gap-3 mb-4">
+          <SectionHeading label="Accessibility" techAlias="WCAG 2.1 contrast" tooltip="Contrast ratios for all key text/background pairings. AA requires 4.5:1 for normal text, 3:1 for large text. AAA requires 7:1." />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <PairingGroup title="Core text" border={border} sans={sans} mono={mono} pairs={[
+            { fgHex: tp, bgHex: bg,   fgLabel: 'color.text.primary',   bgLabel: 'color.bg.default' },
+            { fgHex: tp, bgHex: surf, fgLabel: 'color.text.primary',   bgLabel: 'color.surface.default' },
+            { fgHex: ts, bgHex: bg,   fgLabel: 'color.text.secondary', bgLabel: 'color.bg.default' },
+            { fgHex: ts, bgHex: surf, fgLabel: 'color.text.secondary', bgLabel: 'color.surface.default' },
+            { fgHex: td, bgHex: bg,   fgLabel: 'color.text.disabled',  bgLabel: 'color.bg.default' },
+          ]} />
+          <PairingGroup title="Brand" border={border} sans={sans} mono={mono} pairs={[
+            { fgHex: onBrand, bgHex: brand,  fgLabel: 'color.on.brand',   bgLabel: 'color.bg.brand.solid' },
+            { fgHex: onBrand, bgHex: brandH, fgLabel: 'color.on.brand',   bgLabel: 'color.bg.brand.solid.hover' },
+            { fgHex: brandT,  bgHex: bg,     fgLabel: 'color.text.brand', bgLabel: 'color.bg.default' },
+            { fgHex: brandT,  bgHex: brandS, fgLabel: 'color.text.brand', bgLabel: 'color.bg.brand.subtle' },
+          ]} />
+          <PairingGroup title="Status — solid" border={border} sans={sans} mono={mono} pairs={[
+            { fgHex: color('color.on.success'), bgHex: successC, fgLabel: 'color.on.success', bgLabel: 'color.bg.success.solid' },
+            { fgHex: color('color.on.warning'), bgHex: warningC, fgLabel: 'color.on.warning', bgLabel: 'color.bg.warning.solid' },
+            { fgHex: color('color.on.danger'),  bgHex: dangerC,  fgLabel: 'color.on.danger',  bgLabel: 'color.bg.danger.solid' },
+          ]} />
+          <PairingGroup title="Status — subtle" border={border} sans={sans} mono={mono} pairs={[
+            { fgHex: color('color.text.success'), bgHex: successBg, fgLabel: 'color.text.success', bgLabel: 'color.bg.success.subtle' },
+            { fgHex: color('color.text.warning'), bgHex: warningBg, fgLabel: 'color.text.warning', bgLabel: 'color.bg.warning.subtle' },
+            { fgHex: color('color.text.danger'),  bgHex: dangerBg,  fgLabel: 'color.text.danger',  bgLabel: 'color.bg.danger.subtle' },
+          ]} />
+        </div>
+      </section>
+
       {/* Rationale */}
       <section className="mt-10 rounded-xl border border-white/[0.08] bg-white/[0.03] px-8 py-7">
         <h2 className="text-xs font-semibold tracking-widest text-white/30 uppercase mb-5">How color works here</h2>
         <div className="grid grid-cols-3 gap-8">
           <div>
             <div className="text-[11px] font-semibold text-white/50 mb-1.5">Two layers</div>
-            <p className="text-[13px] text-white/35 leading-relaxed">Raw palettes give you every shade. Semantic tokens name them by job — not by number. Components only ever see the semantic layer.</p>
+            <p className="text-[13px] text-white/35 leading-relaxed">Raw palettes give you every shade. Color roles name them by job — not by number. Components only ever see the role layer.</p>
           </div>
           <div>
             <div className="text-[11px] font-semibold text-white/50 mb-1.5">Positions, not values</div>

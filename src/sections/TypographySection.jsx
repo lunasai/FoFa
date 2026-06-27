@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import clsx from 'clsx'
-import { Plus, X, Trash2, ChevronDown, ChevronUp, Search, Check, Link2, SlidersHorizontal, Info, CornerDownLeft } from 'lucide-react'
+import { Plus, X, ChevronDown, ChevronUp, Search, Check, Link2, SlidersHorizontal, Info, CornerDownLeft } from 'lucide-react'
 import { computeClamp } from '../lib/typographyUtils'
 import { GOOGLE_FONTS, buildStack, buildGoogleFontUrl, parseGoogleFontsUrl } from '../lib/googleFonts'
-import { ScaleTable, ScaleRow, InlineNameEdit } from '../components/ScaleTable'
+import { InlineNameEdit } from '../components/ScaleTable'
+import { SectionHeading } from '../components/SectionHeading'
 
 const WEIGHTS = [100, 200, 300, 400, 500, 600, 700, 800, 900]
 
@@ -216,14 +217,6 @@ function FontFamilyRow({ name, stack, meta, onRename, onSelectFont, onRemove, ca
           >
             {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
-          {canRemove && (
-            <button
-              onClick={onRemove}
-              className="text-white/20 hover:text-red-400 transition-colors p-1"
-            >
-              <Trash2 size={14} />
-            </button>
-          )}
         </div>
       </div>
 
@@ -233,7 +226,7 @@ function FontFamilyRow({ name, stack, meta, onRename, onSelectFont, onRemove, ca
           <div className="pt-4 space-y-4">
             {/* Token name */}
             <div>
-              <div className="text-[10px] font-semibold text-white/20 uppercase tracking-wider mb-1.5">Token name</div>
+              <div className="text-[10px] font-semibold text-white/20 uppercase tracking-wider mb-1.5">Alias</div>
               <input
                 value={nameDraft}
                 onChange={e => setNameDraft(e.target.value)}
@@ -272,6 +265,18 @@ function FontFamilyRow({ name, stack, meta, onRename, onSelectFont, onRemove, ca
                 ))}
               </div>
             </div>
+
+            {/* Delete */}
+            {canRemove && (
+              <div className="pt-1 flex justify-end">
+                <button
+                  onClick={onRemove}
+                  className="flex items-center gap-1.5 text-[11px] text-white/20 hover:text-red-400 transition-colors"
+                >
+                  <X size={12} /> Remove typeface
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -279,74 +284,128 @@ function FontFamilyRow({ name, stack, meta, onRename, onSelectFont, onRemove, ca
   )
 }
 
-// ── Size scale row ────────────────────────────────────────────────────────────
+// ── Type ramp (replaces flat table) ──────────────────────────────────────────
 
-function SizeRow({ entry, baseSize, fontFamily, autoFocusName, onConsumedAutoFocus, onChange, onRename, onRemove }) {
-  const minPx = entry.min * baseSize
-  const maxPx = entry.max * baseSize
-  const minRem = parseFloat(entry.min.toFixed(4))
-  const maxRem = parseFloat(entry.max.toFixed(4))
-  const remLabel = minRem === maxRem ? `${minRem}rem` : `${minRem} → ${maxRem}rem`
+function TypeRamp({ steps, viewport, baseSize, fontFamily, onUpdate, onRename, onRemove, autoEditStep, onConsumedAutoFocus }) {
+  const [vt, setVt] = useState(0.5)
+  const [expanded, setExpanded] = useState(null)
 
-  const PREVIEW_CAP = 32
-  const previewScale = maxPx > PREVIEW_CAP ? PREVIEW_CAP / maxPx : 1
-  const minPreview = minPx * previewScale
-  const maxPreview = maxPx * previewScale
-  const sameSize = minRem === maxRem
+  const sorted = [...steps].sort((a, b) => b.max - a.max)
+  const currentVw = Math.round(viewport.min + (viewport.max - viewport.min) * vt)
+  const DISPLAY_CAP = 72
 
-  const previewStyle = (size) => ({
-    fontFamily,
-    fontSize: size,
-    fontWeight: 600,
-    color: 'rgba(255,255,255,0.85)',
-    lineHeight: 1,
-  })
+  function lerpPx(entry) {
+    return (entry.min + (entry.max - entry.min) * vt) * baseSize
+  }
 
   return (
-    <ScaleRow>
-      {/* Min + max previews — baseline-aligned, scaled to fit */}
-      <div className="w-28 flex-shrink-0 flex items-end gap-3 overflow-visible">
-        {sameSize ? (
-          <span className="shrink-0 leading-none" style={previewStyle(maxPreview)}>Aa</span>
-        ) : (
-          <>
-            <span className="shrink-0 leading-none" style={previewStyle(minPreview)} title={`Min · ${Math.round(minPx)}px`}>Aa</span>
-            <span className="shrink-0 leading-none" style={previewStyle(maxPreview)} title={`Max · ${Math.round(maxPx)}px`}>Aa</span>
-          </>
-        )}
+    <div>
+      {/* Viewport scrubber */}
+      <div className="flex items-center gap-3 mb-5">
+        <span className="text-[10px] font-mono text-white/20 w-16 text-right flex-shrink-0 tabular-nums">{viewport.min}px</span>
+        <input
+          type="range" min={0} max={1} step={0.001} value={vt}
+          onChange={e => setVt(Number(e.target.value))}
+          className="flex-1 cursor-pointer h-px"
+          style={{ accentColor: 'rgba(255,255,255,0.5)' }}
+        />
+        <span className="text-[10px] font-mono text-white/20 w-16 flex-shrink-0 tabular-nums">{viewport.max}px</span>
+        <span className="text-[10px] font-mono text-white/50 bg-white/[0.06] border border-white/[0.08] rounded-md px-2 py-0.5 w-16 text-center flex-shrink-0 tabular-nums">
+          {currentVw}px
+        </span>
       </div>
 
-      {/* Name — inline edit */}
-      <div className="w-24 flex-shrink-0 min-w-0">
-        <InlineNameEdit value={entry.step} onRename={onRename} autoFocus={autoFocusName} onConsumedAutoFocus={onConsumedAutoFocus} />
-      </div>
+      {/* Ramp */}
+      <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] overflow-hidden">
+        {sorted.map((entry, i) => {
+          const isLast = i === sorted.length - 1
+          const isExpanded = expanded === entry.step
+          const rawPx = lerpPx(entry)
+          const displayPx = Math.min(rawPx, DISPLAY_CAP)
+          const minPx = Math.round(entry.min * baseSize)
+          const maxPx = Math.round(entry.max * baseSize)
+          const isFluid = Math.abs(entry.max - entry.min) > 0.001
+          const minRem = parseFloat(entry.min.toFixed(4))
+          const maxRem = parseFloat(entry.max.toFixed(4))
 
-      {/* Min (px) */}
-      <div className="flex items-center justify-end gap-1.5 w-[84px]">
-        <input type="number" value={Math.round(entry.min * baseSize)} min={1} max={200} step={1}
-          onChange={e => onChange({ ...entry, min: Number(e.target.value) / baseSize })}
-          className={`w-14 ${inputCls}`} />
-        <span className="text-[10px] text-white/20">px</span>
-      </div>
+          return (
+            <div key={entry.step} className={clsx(!isLast && 'border-b border-white/[0.04]')}>
+              <div
+                className={clsx(
+                  'flex items-center gap-4 px-5 py-3 cursor-pointer transition-colors',
+                  isExpanded ? 'bg-white/[0.025]' : 'hover:bg-white/[0.015]'
+                )}
+                onClick={() => setExpanded(s => s === entry.step ? null : entry.step)}
+              >
+                {/* Step name */}
+                <div className="w-10 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                  <InlineNameEdit
+                    value={entry.step}
+                    onRename={onRename}
+                    autoFocus={autoEditStep === entry.step}
+                    onConsumedAutoFocus={onConsumedAutoFocus}
+                  />
+                </div>
 
-      {/* Max (px) */}
-      <div className="flex items-center justify-end gap-1.5 w-[84px]">
-        <input type="number" value={Math.round(entry.max * baseSize)} min={1} max={200} step={1}
-          onChange={e => onChange({ ...entry, max: Number(e.target.value) / baseSize })}
-          className={`w-14 ${inputCls}`} />
-        <span className="text-[10px] text-white/20">px</span>
-      </div>
+                {/* Live text preview */}
+                <div className="flex-1 min-w-0 overflow-hidden">
+                  <span style={{
+                    fontFamily,
+                    fontSize: displayPx,
+                    fontWeight: 600,
+                    color: 'rgba(255,255,255,0.85)',
+                    lineHeight: 1.15,
+                    whiteSpace: 'nowrap',
+                    display: 'block',
+                  }}>
+                    The quick brown fox
+                  </span>
+                </div>
 
-      {/* rem equivalent */}
-      <span className="w-28 text-right text-[10px] font-mono text-white/15">{remLabel}</span>
+                {/* Size + remove */}
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <span className="text-[10px] font-mono text-white/25 tabular-nums">{Math.round(rawPx)}px</span>
+                  <button
+                    onClick={e => { e.stopPropagation(); onRemove(entry.step) }}
+                    className="text-white/15 hover:text-red-400 transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              </div>
 
-      {/* Remove */}
-      <div className="w-[18px] flex justify-end">
-        <button onClick={onRemove} className="text-white/20 hover:text-red-400 transition-colors">
-          <X size={12} />
-        </button>
+              {/* Expanded: min/max edit panel */}
+              {isExpanded && (
+                <div
+                  className="flex items-center gap-5 px-5 py-3 border-t border-white/[0.04] bg-white/[0.015]"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-white/25 w-6">min</span>
+                    <input type="number" value={minPx} min={1} max={200} step={1}
+                      onChange={e => onUpdate({ ...entry, min: Number(e.target.value) / baseSize })}
+                      className={`w-14 ${inputCls}`}
+                    />
+                    <span className="text-[10px] text-white/20">px</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-white/25 w-6">max</span>
+                    <input type="number" value={maxPx} min={1} max={200} step={1}
+                      onChange={e => onUpdate({ ...entry, max: Number(e.target.value) / baseSize })}
+                      className={`w-14 ${inputCls}`}
+                    />
+                    <span className="text-[10px] text-white/20">px</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-white/15 ml-auto">
+                    {isFluid ? `${minRem} → ${maxRem}rem` : `${minRem}rem`}
+                  </span>
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
-    </ScaleRow>
+    </div>
   )
 }
 
@@ -355,76 +414,89 @@ function SizeRow({ entry, baseSize, fontFamily, autoFocusName, onConsumedAutoFoc
 function SemanticRow({ token, sizeSteps, fontFamily, baseSize, onChange, onRemove, index, total }) {
   const sizeEntry = sizeSteps.find(s => s.step === token.size)
   const resolvedFamily = fontFamily[token.family] ?? Object.values(fontFamily)[0]
+  const previewSize = Math.min((sizeEntry?.max ?? 1) * baseSize, 72)
 
   return (
-    <div className={clsx('px-5 py-4', index < total - 1 && 'border-b border-white/[0.04]')}>
-      {/* Row 1 — full-width sample preview at the token's real style */}
-      <div className="overflow-hidden whitespace-nowrap mb-4" style={{
-        fontFamily: resolvedFamily,
-        fontSize: Math.min((sizeEntry?.max ?? 1) * baseSize, 56),
-        fontWeight: token.weight ?? 400,
-        lineHeight: token.leading ?? 1.2,
-        letterSpacing: `${token.tracking ?? 0}em`,
-        color: 'rgba(255,255,255,0.9)',
-        textOverflow: 'ellipsis',
-      }}>
-        {sampleForToken(token, sizeSteps)}
+    <div className={clsx('flex items-stretch', index < total - 1 && 'border-b border-white/[0.04]')}>
+
+      {/* Left — live text preview, dominant ~60% */}
+      <div className="flex-1 min-w-0 flex items-center px-6 py-5">
+        <span style={{
+          fontFamily: resolvedFamily,
+          fontSize: previewSize,
+          fontWeight: token.weight ?? 400,
+          lineHeight: token.leading ?? 1.15,
+          letterSpacing: `${token.tracking ?? 0}em`,
+          color: 'rgba(255,255,255,0.88)',
+          display: 'block',
+        }}>
+          {sampleForToken(token, sizeSteps)}
+        </span>
       </div>
 
-      {/* Row 2 — token info + editable controls, grouped by meaning */}
-      <div className="flex items-center gap-4">
-        {/* Token id + description */}
-        <div className="flex-1 min-w-0">
-          <div className="text-xs font-mono text-white/80 truncate">{token.id}</div>
-          <div className="text-[11px] text-white/30 truncate">{token.description}</div>
-        </div>
+      {/* Column divider */}
+      <div className="w-px bg-white/[0.04] flex-shrink-0 my-3" />
 
-        {/* Style cluster — size · family · weight */}
-        <div className="flex items-center gap-2">
-          <select value={token.size} onChange={e => onChange('size', e.target.value)} className={dropdownCls}>
-            {sizeSteps.map(s => <option key={s.step} value={s.step} style={{ background: '#111' }}>{s.step}</option>)}
-          </select>
-          <select value={token.family ?? 'sans'} onChange={e => onChange('family', e.target.value)} className={dropdownCls}>
-            {Object.keys(fontFamily).map(k => <option key={k} value={k} style={{ background: '#111' }}>{k}</option>)}
-          </select>
-          <select value={token.weight ?? 400} onChange={e => onChange('weight', Number(e.target.value))} className={dropdownCls}>
-            {WEIGHTS.map(w => <option key={w} value={w} style={{ background: '#111' }}>{w}</option>)}
-          </select>
-        </div>
+      {/* Right — token id, description, controls ~40% */}
+      <div className="flex-1 flex flex-col justify-between gap-3 px-4 py-4 min-w-0">
 
-        {/* Divider between style and metrics groups */}
-        <span className="w-px h-5 bg-white/[0.08] flex-shrink-0" />
-
-        {/* Metrics cluster — leading · tracking */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1">
-            <input type="number" value={token.leading ?? 1.5} min={0.8} max={3} step={0.05}
-              onChange={e => onChange('leading', Number(e.target.value))}
-              className={`w-14 ${inputCls}`} />
-            <span className="text-[10px] text-white/20">lh</span>
+        {/* Identity row */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="text-[11px] font-mono text-white/60 truncate">{token.id}</div>
+            <div className="text-[10px] text-white/30 truncate mt-0.5">{token.description}</div>
           </div>
-          <div className="flex items-center gap-1">
-            <input type="number" value={token.tracking ?? 0} min={-0.1} max={0.25} step={0.005}
-              onChange={e => onChange('tracking', Number(e.target.value))}
-              className={`w-14 ${inputCls}`} />
-            <span className="text-[10px] text-white/20">em</span>
-          </div>
+          <button onClick={onRemove} title="Remove token"
+            className="text-white/15 hover:text-red-400 transition-colors flex-shrink-0 mt-0.5">
+            <X size={12} />
+          </button>
         </div>
 
-        {/* Remove */}
-        <button
-          onClick={onRemove}
-          className="text-white/15 hover:text-red-400 transition-colors flex-shrink-0"
-          title="Remove token"
-        >
-          <X size={12} />
-        </button>
+        {/* Controls */}
+        <div className="space-y-1.5">
+          {/* Size · family · weight */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-white/25">size</span>
+              <select value={token.size} onChange={e => onChange('size', e.target.value)} className={dropdownCls}>
+                {sizeSteps.map(s => <option key={s.step} value={s.step} style={{ background: '#111' }}>{s.step}</option>)}
+              </select>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-white/25">family</span>
+              <select value={token.family ?? 'sans'} onChange={e => onChange('family', e.target.value)} className={dropdownCls}>
+                {Object.keys(fontFamily).map(k => <option key={k} value={k} style={{ background: '#111' }}>{k}</option>)}
+              </select>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-white/25">weight</span>
+              <select value={token.weight ?? 400} onChange={e => onChange('weight', Number(e.target.value))} className={dropdownCls}>
+                {WEIGHTS.map(w => <option key={w} value={w} style={{ background: '#111' }}>{w}</option>)}
+              </select>
+            </div>
+          </div>
+          {/* Leading · tracking */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-white/25">lh</span>
+              <input type="number" value={token.leading ?? 1.5} min={0.8} max={3} step={0.05}
+                onChange={e => onChange('leading', Number(e.target.value))}
+                className={`w-14 ${inputCls}`} />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-white/25">ls</span>
+              <input type="number" value={token.tracking ?? 0} min={-0.1} max={0.25} step={0.005}
+                onChange={e => onChange('tracking', Number(e.target.value))}
+                className={`w-14 ${inputCls}`} />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
 }
 
-// ── Add semantic token modal (custom only — typography has no rule-based presets) ──
+// ── Add text style modal (custom only — typography has no rule-based presets) ──
 
 const modalFieldCls = 'w-full bg-white/[0.05] border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none appearance-none cursor-pointer'
 
@@ -464,7 +536,7 @@ function TypographyTokenModal({ sizeSteps, fontFamily, baseSize, existingIds, on
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-white/[0.06]">
-          <h2 className="text-sm font-semibold text-white">Add semantic token</h2>
+          <h2 className="text-sm font-semibold text-white">Add text style</h2>
           <button onClick={onClose} className="text-white/30 hover:text-white/70 transition-colors"><X size={16} /></button>
         </div>
 
@@ -500,7 +572,7 @@ function TypographyTokenModal({ sizeSteps, fontFamily, baseSize, existingIds, on
 
           {/* Size */}
           <div className="flex items-center gap-3">
-            <span className="text-xs text-white/40 w-14 flex-shrink-0">Size</span>
+            <span className="text-xs text-white/40 w-14 flex-shrink-0">Font size</span>
             <div className="relative flex-1">
               <select value={size} onChange={e => setSize(e.target.value)} className={modalFieldCls}>
                 {sizeSteps.map(s => <option key={s.step} value={s.step} style={{ background: '#111' }}>{s.step}</option>)}
@@ -511,7 +583,7 @@ function TypographyTokenModal({ sizeSteps, fontFamily, baseSize, existingIds, on
 
           {/* Family */}
           <div className="flex items-center gap-3">
-            <span className="text-xs text-white/40 w-14 flex-shrink-0">Family</span>
+            <span className="text-xs text-white/40 w-14 flex-shrink-0">Typeface</span>
             <div className="relative flex-1">
               <select value={family} onChange={e => setFamily(e.target.value)} className={modalFieldCls}>
                 {Object.keys(fontFamily).map(k => <option key={k} value={k} style={{ background: '#111' }}>{k}</option>)}
@@ -629,18 +701,22 @@ export default function TypographySection({ store }) {
     <div className="max-w-5xl mx-auto px-8 py-10">
       <div className="mb-10">
         <h1 className="text-2xl font-bold text-white tracking-tight">Typography</h1>
-        <p className="text-sm text-white/40 mt-1">Pick your fonts and sizes, then name the text roles you'll reuse everywhere.</p>
+        <p className="text-sm text-white/40 mt-1">Pick your typefaces and font sizes, then define the text styles you'll reuse everywhere.</p>
       </div>
 
       {/* Font Families */}
       <section className="mb-12">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-xs font-semibold tracking-widest text-white/30 uppercase">Font Families</h2>
+          <SectionHeading
+            label="Typefaces"
+            techAlias="font-family tokens"
+            tooltip="Font family definitions exported as CSS custom properties (e.g. var(--font-sans)). Text styles reference these slots by name, so swapping a typeface here updates every style that uses it."
+          />
           <button
             onClick={addFontFamily}
             className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors border border-white/10 hover:border-white/20 rounded-lg px-3 py-1.5"
           >
-            <Plus size={12} /> Add font family
+            <Plus size={12} /> Add typeface
           </button>
         </div>
         <div className="space-y-4">
@@ -662,7 +738,11 @@ export default function TypographySection({ store }) {
       {/* Size Scale */}
       <section className="mb-12">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-xs font-semibold tracking-widest text-white/30 uppercase">Size Scale</h2>
+          <SectionHeading
+            label="Font Sizes"
+            techAlias="type scale · primitive tokens"
+            tooltip="Raw size values that form your fluid type scale. Each step outputs a CSS clamp() that scales between its min and max values across the defined viewport range. Text styles reference these steps by name."
+          />
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowSizeAdvanced(v => !v)}
@@ -680,7 +760,7 @@ export default function TypographySection({ store }) {
               onClick={addSizeStep}
               className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors border border-white/10 hover:border-white/20 rounded-lg px-3 py-1.5"
             >
-              <Plus size={12} /> Add size step
+              <Plus size={12} /> Add font size
             </button>
           </div>
         </div>
@@ -730,35 +810,32 @@ export default function TypographySection({ store }) {
           </div>
         )}
 
-        <ScaleTable columns={[
-          { label: 'Preview', width: 'w-28' },
-          { label: 'Name', width: 'w-24' },
-          { label: 'Min', width: 'w-[84px]', align: 'center' },
-          { label: 'Max', width: 'w-[84px]', align: 'center' },
-          { label: 'rem', width: 'w-28', align: 'right' },
-          { label: '', width: 'w-[18px]' },
-        ]}>
-          {[...typography.size].reverse().map(entry => (
-            <SizeRow key={entry.step} entry={entry} baseSize={baseSize}
-              fontFamily={fallbackFamily}
-              autoFocusName={autoEditStep === entry.step}
-              onConsumedAutoFocus={() => setAutoEditStep(null)}
-              onChange={updated => updateSizeStep(entry.step, updated)}
-              onRename={updateTypographyStepName}
-              onRemove={() => removeSizeStep(entry.step)} />
-          ))}
-        </ScaleTable>
+        <TypeRamp
+          steps={typography.size}
+          viewport={viewport}
+          baseSize={baseSize}
+          fontFamily={fallbackFamily}
+          onUpdate={updated => updateSizeStep(updated.step, updated)}
+          onRename={updateTypographyStepName}
+          onRemove={removeSizeStep}
+          autoEditStep={autoEditStep}
+          onConsumedAutoFocus={() => setAutoEditStep(null)}
+        />
       </section>
 
       {/* Semantic tokens */}
       <section>
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-xs font-semibold tracking-widest text-white/30 uppercase">Semantic Tokens</h2>
+          <SectionHeading
+            label="Text Styles"
+            techAlias="semantic tokens"
+            tooltip="Composite typography tokens — size step + family + weight + leading + tracking — bound to a UI role. Each token exports a set of CSS custom properties or a utility class you can apply to any text element."
+          />
           <button
             onClick={() => setShowTokenModal(true)}
             className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors border border-white/10 hover:border-white/20 rounded-lg px-3 py-1.5"
           >
-            <Plus size={12} /> Add semantic token
+            <Plus size={12} /> Add text style
           </button>
         </div>
         <div className="rounded-xl border border-white/[0.08] bg-white/[0.03]">
