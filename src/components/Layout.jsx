@@ -6,7 +6,7 @@ import { buildTokensJson, buildDesignMd, downloadFile } from '../lib/exportUtils
 const NAV_ITEMS = [
   { id: 'color',      label: 'Color',      icon: Palette },
   { id: 'typography', label: 'Typography', icon: Type },
-  { id: 'spacing',    label: 'Spacing',    icon: Ruler },
+  { id: 'spacing',    label: 'Layout',     icon: Ruler },
   { id: 'shapes',     label: 'Shapes',     icon: Square },
   { id: 'semantics',  label: 'Naming',     icon: Tag },
   { id: 'preview',    label: 'Preview',    icon: Eye },

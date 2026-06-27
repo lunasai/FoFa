@@ -280,7 +280,7 @@ export default function ImportWizard({ existingPalettes, existingSemanticTokens,
             <div className="text-center py-8">
               <div className="text-2xl mb-3">✓</div>
               <div className="text-sm font-medium text-white">Import applied</div>
-              <div className="text-xs text-white/40 mt-1">Your tokens are now in the editor.</div>
+              <div className="text-xs text-white/40 mt-1">Your tokens just rolled off the line.</div>
             </div>
           )}
         </div>

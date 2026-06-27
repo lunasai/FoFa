@@ -227,7 +227,7 @@ function TokenWizardModal({ palettes, existingTokens, onAdd, onClose }) {
                 <input
                   value={customDesc}
                   onChange={e => setCustomDesc(e.target.value)}
-                  placeholder="Optional description"
+                  placeholder="Optional note"
                   className="flex-1 bg-white/[0.05] border border-white/10 rounded-lg px-3 py-2 text-xs text-white/70 outline-none placeholder-white/15"
                 />
               </div>
@@ -523,7 +523,7 @@ export default function ColorSection({ store }) {
     <div className="max-w-5xl mx-auto px-8 py-10">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white tracking-tight">Color</h1>
-        <p className="text-sm text-white/40 mt-1">Define color scales, then map them to semantic roles.</p>
+        <p className="text-sm text-white/40 mt-1">Mix your palettes, then map them to roles.</p>
       </div>
 
       {/* Palettes */}

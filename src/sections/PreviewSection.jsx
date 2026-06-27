@@ -53,7 +53,7 @@ export default function PreviewSection({ store }) {
     const baseSize  = typography.baseSize ?? 16
     return {
       fontSize:      sizeEntry ? Math.min(sizeEntry.max * baseSize, 64) : 16,
-      fontFamily:    typography.fontFamily?.[token.family ?? 'sans'] ?? typography.fontFamily?.sans,
+      fontFamily:    typography.fontFamily?.[token.family ?? 'sans'] ?? Object.values(typography.fontFamily ?? {})[0],
       fontWeight:    token.weight  ?? 400,
       lineHeight:    token.leading ?? 1.5,
       letterSpacing: `${token.tracking ?? 0}em`,
@@ -61,8 +61,11 @@ export default function PreviewSection({ store }) {
   }
 
   const brandPalette = colorPalettes[0]
-  const sans = typography.fontFamily.sans
-  const mono = typography.fontFamily.mono
+  const familyKeys = Object.keys(typography.fontFamily ?? {})
+  const sans = typography.fontFamily?.sans ?? typography.fontFamily?.[familyKeys[0]] ?? 'system-ui, sans-serif'
+  const mono = typography.fontFamily?.mono
+    ?? typography.fontFamily?.[familyKeys.find(k => /mono/i.test(k))]
+    ?? 'ui-monospace, monospace'
 
   const bg     = color('color.bg.default')
   const surf   = color('color.surface.default')
@@ -101,7 +104,7 @@ export default function PreviewSection({ store }) {
     <div className="max-w-5xl mx-auto px-8 py-10">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white tracking-tight">Preview</h1>
-        <p className="text-sm text-white/40 mt-1">Your system, expressed.</p>
+        <p className="text-sm text-white/40 mt-1">The whole system, on display.</p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap }}>

@@ -47,7 +47,8 @@ export function buildTokensJson(store) {
   // Typography
   const typoVp   = typography.viewport ?? { min: 320, max: 1440 }
   const typoBase = typography.baseSize ?? 16
-  tokens.typography = { fontFamily: typography.fontFamily, size: {}, semantic: {} }
+  const fontImports = [...new Set(Object.values(typography.fontMeta || {}).map(m => m?.url).filter(Boolean))]
+  tokens.typography = { fontFamily: typography.fontFamily, fontImports, size: {}, semantic: {} }
   ;(typography.size ?? []).forEach(entry => {
     tokens.typography.size[entry.step] = {
       $value: computeClamp(entry, typoVp, typoBase),
@@ -68,17 +69,26 @@ export function buildTokensJson(store) {
     }
   })
 
+  // Breakpoints — single-width anchors
+  const breakpoints = spacing.breakpoints ?? []
+  tokens.breakpoint = {}
+  breakpoints.forEach(bp => {
+    tokens.breakpoint[bp.id] = { $value: `${bp.width}px`, $type: 'dimension' }
+  })
+
   // Spacing
-  tokens.spacing = {
-    scale: {},
-    grid: {
-      columns: { $value: spacing.grid.columns },
-      gutter: { $value: `${spacing.grid.gutter}px`, $type: 'dimension' },
-      margin: { $value: `${spacing.grid.margin}px`, $type: 'dimension' },
-    },
-  }
+  tokens.spacing = { scale: {}, grid: {} }
   spacing.scale.forEach(s => {
     tokens.spacing.scale[s.step] = { $value: `${s.value}px`, $type: 'dimension' }
+  })
+  // Responsive grid — one config per breakpoint
+  breakpoints.forEach(bp => {
+    tokens.spacing.grid[bp.id] = {
+      breakpoint: { $value: `${bp.width}px`, $type: 'dimension', $ref: `{breakpoint.${bp.id}}` },
+      columns: { $value: bp.columns },
+      gutter: { $value: `${bp.gutter}px`, $type: 'dimension' },
+      margin: { $value: `${bp.margin}px`, $type: 'dimension' },
+    }
   })
 
   // Shapes
@@ -165,8 +175,11 @@ export function buildDesignMd(store) {
   lines.push('')
   const mdVp = typography.viewport ?? { min: 320, max: 1440 }
   const mdBase = typography.baseSize ?? 16
-  lines.push(`- **Sans font:** \`${typography.fontFamily.sans}\``)
-  lines.push(`- **Mono font:** \`${typography.fontFamily.mono}\``)
+  Object.entries(typography.fontFamily ?? {}).forEach(([key, stack]) => {
+    const meta = typography.fontMeta?.[key]
+    const imp = meta?.url ? ` — import: \`@import url('${meta.url}');\`` : ''
+    lines.push(`- **${key} font:** \`${stack}\`${imp}`)
+  })
   lines.push(`- **Base size:** ${mdBase}px  |  **Viewport:** ${mdVp.min}px → ${mdVp.max}px`)
   lines.push('')
   lines.push('### Size Scale')
@@ -196,11 +209,21 @@ export function buildDesignMd(store) {
     lines.push(`- \`spacing.${s.step}\` — ${s.value}px`)
   })
   lines.push('')
-  lines.push('### Grid')
+  lines.push('### Breakpoints')
   lines.push('')
-  lines.push(`- **Columns:** ${spacing.grid.columns}`)
-  lines.push(`- **Gutter:** ${spacing.grid.gutter}px`)
-  lines.push(`- **Margin:** ${spacing.grid.margin}px`)
+  lines.push('Single-width anchors. The smallest and largest also define the fluid typography range.')
+  lines.push('')
+  ;(spacing.breakpoints ?? []).forEach(bp => {
+    lines.push(`- \`breakpoint.${bp.id}\` — ${bp.width}px`)
+  })
+  lines.push('')
+  lines.push('### Responsive Grid')
+  lines.push('')
+  lines.push('| Breakpoint | Min width | Columns | Gutter | Margin |')
+  lines.push('| --- | --- | --- | --- | --- |')
+  ;(spacing.breakpoints ?? []).forEach(bp => {
+    lines.push(`| \`${bp.id}\` | ${bp.width}px | ${bp.columns} | ${bp.gutter}px | ${bp.margin}px |`)
+  })
   lines.push('')
 
   // SHAPES

@@ -77,9 +77,14 @@ const DEFAULT_SEMANTIC_COLOR_TOKENS = [
 ]
 
 const DEFAULT_TYPOGRAPHY = {
-  fontFamily: { sans: 'Inter, system-ui, sans-serif', mono: 'JetBrains Mono, monospace' },
+  fontFamily: { sans: '"Inter", sans-serif', mono: '"JetBrains Mono", monospace' },
+  fontMeta: {
+    sans: { family: 'Inter', category: 'sans-serif', source: 'google', url: 'https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap' },
+    mono: { family: 'JetBrains Mono', category: 'monospace', source: 'google', url: 'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100;200;300;400;500;600;700;800&display=swap' },
+  },
   baseSize: 16,
   viewport: { min: 320, max: 1440 },
+  viewportAnchors: { min: 'sm', max: 'lg' },
   size: [
     { step: 'xs',  min: 0.75,  max: 0.75  },
     { step: 'sm',  min: 0.875, max: 0.875 },
@@ -105,6 +110,15 @@ const DEFAULT_TYPOGRAPHY = {
   ],
 }
 
+// Breakpoints are single-width anchors. The set's smallest/largest width also
+// drives typography's fluid range (see deriveViewport). Each carries its own
+// responsive grid config (columns / gutter / margin).
+const DEFAULT_BREAKPOINTS = [
+  { id: 'sm', width: 390,  columns: 4,  gutter: 16, margin: 16 },
+  { id: 'md', width: 768,  columns: 8,  gutter: 24, margin: 24 },
+  { id: 'lg', width: 1280, columns: 12, gutter: 32, margin: 32 },
+]
+
 const DEFAULT_SPACING = {
   scale: [
     { step: 'none', value: 0 },
@@ -116,7 +130,22 @@ const DEFAULT_SPACING = {
     { step: '2xl',  value: 40 },
     { step: '3xl',  value: 64 },
   ],
-  grid: { columns: 12, gutter: 24, margin: 32 },
+  breakpoints: DEFAULT_BREAKPOINTS,
+}
+
+// Fluid range anchors to two chosen breakpoint tokens. Falls back to the
+// smallest / largest breakpoint widths when an anchor id is missing.
+function deriveViewport(breakpoints, anchors) {
+  const bps = breakpoints ?? []
+  const widths = bps.map(b => b.width).filter(w => Number.isFinite(w))
+  const fallbackMin = widths.length ? Math.min(...widths) : 320
+  const fallbackMax = widths.length ? Math.max(...widths) : 1440
+  const minBp = bps.find(b => b.id === anchors?.min)
+  const maxBp = bps.find(b => b.id === anchors?.max)
+  return {
+    min: minBp ? minBp.width : fallbackMin,
+    max: maxBp ? maxBp.width : fallbackMax,
+  }
 }
 
 const DEFAULT_SHAPES = {
@@ -146,6 +175,14 @@ const DEFAULT_SHAPES = {
     { id: 'radius.tooltip', step: 'sm',   description: 'Tooltip radius',
       concept: { role: 'tooltip', isScale: false } },
   ],
+}
+
+function slugifyFamilyKey(raw) {
+  return String(raw)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 }
 
 function applyAutoSteps(tokens, palettes) {
@@ -227,6 +264,76 @@ export function useStore() {
     })
   }, [])
 
+  const addFontFamily = useCallback(() => {
+    setTypography(prev => {
+      const keys = Object.keys(prev.fontFamily)
+      let key = 'untitled'
+      let n = 1
+      while (keys.includes(key)) { n++; key = `untitled-${n}` }
+      return { ...prev, fontFamily: { ...prev.fontFamily, [key]: 'system-ui, sans-serif' } }
+    })
+  }, [])
+
+  const updateFontFamilyStack = useCallback((key, stack) => {
+    setTypography(prev => ({ ...prev, fontFamily: { ...prev.fontFamily, [key]: stack } }))
+  }, [])
+
+  // Assign a concrete typeface (from the Google Fonts picker or a pasted URL) to a family slot.
+  const selectFontFamily = useCallback((key, payload) => {
+    setTypography(prev => ({
+      ...prev,
+      fontFamily: { ...prev.fontFamily, [key]: payload.stack },
+      fontMeta: {
+        ...(prev.fontMeta || {}),
+        [key]: { family: payload.family, url: payload.url, category: payload.category, source: payload.source },
+      },
+    }))
+  }, [])
+
+  const renameFontFamily = useCallback((oldKey, rawNew) => {
+    const newKey = slugifyFamilyKey(rawNew)
+    setTypography(prev => {
+      if (!newKey || newKey === oldKey) return prev
+      if (Object.prototype.hasOwnProperty.call(prev.fontFamily, newKey)) return prev
+      const fontFamily = Object.fromEntries(
+        Object.entries(prev.fontFamily).map(([k, v]) => (k === oldKey ? [newKey, v] : [k, v]))
+      )
+      const fontMeta = { ...(prev.fontMeta || {}) }
+      if (fontMeta[oldKey]) { fontMeta[newKey] = fontMeta[oldKey]; delete fontMeta[oldKey] }
+      const semantic = prev.semantic.map(s =>
+        (s.family ?? 'sans') === oldKey ? { ...s, family: newKey } : s
+      )
+      return { ...prev, fontFamily, fontMeta, semantic }
+    })
+  }, [])
+
+  const removeFontFamily = useCallback((key) => {
+    setTypography(prev => {
+      const keys = Object.keys(prev.fontFamily)
+      if (keys.length <= 1) return prev
+      const fallback = keys.find(k => k !== key)
+      const fontFamily = { ...prev.fontFamily }
+      delete fontFamily[key]
+      const fontMeta = { ...(prev.fontMeta || {}) }
+      delete fontMeta[key]
+      const semantic = prev.semantic.map(s =>
+        (s.family ?? 'sans') === key ? { ...s, family: fallback } : s
+      )
+      return { ...prev, fontFamily, fontMeta, semantic }
+    })
+  }, [])
+
+  const addTypographySemantic = useCallback((token) => {
+    setTypography(prev => {
+      if (prev.semantic.some(s => s.id === token.id)) return prev
+      return { ...prev, semantic: [...prev.semantic, token] }
+    })
+  }, [])
+
+  const removeTypographySemantic = useCallback((id) => {
+    setTypography(prev => ({ ...prev, semantic: prev.semantic.filter(s => s.id !== id) }))
+  }, [])
+
   const updateTypographyStepName = useCallback((oldStep, newStep) => {
     const trimmed = newStep.trim()
     if (!trimmed || trimmed === oldStep) return
@@ -254,6 +361,50 @@ export function useStore() {
       ...prev,
       scale: prev.scale.map(s => s.step === oldStep ? { ...s, step: trimmed } : s),
     }))
+  }, [])
+
+  const addBreakpoint = useCallback(() => {
+    setSpacing(prev => {
+      const ids = new Set(prev.breakpoints.map(b => b.id))
+      let n = prev.breakpoints.length + 1
+      let id = `bp-${n}`
+      while (ids.has(id)) { n++; id = `bp-${n}` }
+      const widest = Math.max(...prev.breakpoints.map(b => b.width), 0)
+      const last = prev.breakpoints[prev.breakpoints.length - 1]
+      return {
+        ...prev,
+        breakpoints: [...prev.breakpoints, {
+          id,
+          width: widest + 256,
+          columns: last?.columns ?? 12,
+          gutter: last?.gutter ?? 24,
+          margin: last?.margin ?? 24,
+        }],
+      }
+    })
+  }, [])
+
+  const updateBreakpoint = useCallback((id, patch) => {
+    setSpacing(prev => ({
+      ...prev,
+      breakpoints: prev.breakpoints.map(b => b.id === id ? { ...b, ...patch } : b),
+    }))
+  }, [])
+
+  const renameBreakpoint = useCallback((oldId, raw) => {
+    const newId = slugifyFamilyKey(raw)
+    setSpacing(prev => {
+      if (!newId || newId === oldId) return prev
+      if (prev.breakpoints.some(b => b.id === newId)) return prev
+      return { ...prev, breakpoints: prev.breakpoints.map(b => b.id === oldId ? { ...b, id: newId } : b) }
+    })
+  }, [])
+
+  const removeBreakpoint = useCallback((id) => {
+    setSpacing(prev => {
+      if (prev.breakpoints.length <= 1) return prev
+      return { ...prev, breakpoints: prev.breakpoints.filter(b => b.id !== id) }
+    })
   }, [])
 
   const switchCategoryScale = useCallback((category, newScale) => {
@@ -307,24 +458,34 @@ export function useStore() {
   }, [])
 
   const exportProject = useCallback(() => {
-    return { colorPalettes, semanticColorTokens, typography, spacing, shapes, vocabulary }
+    const typographyOut = { ...typography, viewport: deriveViewport(spacing.breakpoints, typography.viewportAnchors) }
+    return { colorPalettes, semanticColorTokens, typography: typographyOut, spacing, shapes, vocabulary }
   }, [colorPalettes, semanticColorTokens, typography, spacing, shapes, vocabulary])
 
   const importProject = useCallback((data) => {
     if (data.colorPalettes)        setColorPalettes(data.colorPalettes)
     if (data.semanticColorTokens)  setSemanticColorTokens(data.semanticColorTokens)
     if (data.typography)           setTypography(data.typography)
-    if (data.spacing)              setSpacing(data.spacing)
+    if (data.spacing) {
+      const sp = data.spacing
+      setSpacing(sp.breakpoints ? sp : { ...sp, breakpoints: DEFAULT_BREAKPOINTS })
+    }
     if (data.shapes)               setShapes(data.shapes)
     if (data.vocabulary)           setVocabulary(data.vocabulary)
   }, [])
 
+  // Typography's fluid range is derived from the breakpoint set (single source of truth).
+  const typographyDerived = { ...typography, viewport: deriveViewport(spacing.breakpoints, typography.viewportAnchors) }
+
   return {
-    colorPalettes, semanticColorTokens, typography, spacing, shapes, vocabulary,
+    colorPalettes, semanticColorTokens, typography: typographyDerived, spacing, shapes, vocabulary,
     updatePaletteBaseColor, updatePaletteStep, addPalette, removePalette,
     updateSemanticToken, addSemanticTokens, removeSemanticToken, recomputeSemanticSteps,
     setTypography, setSpacing, setShapes, updateVocabulary,
+    addFontFamily, updateFontFamilyStack, selectFontFamily, renameFontFamily, removeFontFamily,
+    addTypographySemantic, removeTypographySemantic,
     updateTypographyStepName, updateShapeStepName, updateSpacingStepName,
+    addBreakpoint, updateBreakpoint, renameBreakpoint, removeBreakpoint,
     switchCategoryScale, restoreCategoryScale,
     applyImport, exportProject, importProject,
   }

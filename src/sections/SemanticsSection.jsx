@@ -95,7 +95,7 @@ export default function SemanticsSection({ store }) {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white tracking-tight">Naming</h1>
         <p className="text-sm text-white/40 mt-1">
-          Configure how token names are structured. Changes cascade to JSON export and markdown output.
+          Name it once, reuse it everywhere — changes cascade to your JSON and markdown export.
         </p>
       </div>
 
