@@ -1,23 +1,106 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import clsx from 'clsx'
 import { Plus, X, ChevronDown } from 'lucide-react'
-import { StepNameEditor } from '../components/StepNameEditor'
 import { SectionHeading } from '../components/SectionHeading'
+
+function InlineNameEdit({ value, onRename }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value)
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    if (editing && inputRef.current) { inputRef.current.focus(); inputRef.current.select() }
+  }, [editing])
+
+  function commit() {
+    const t = draft.trim()
+    if (t && t !== value) onRename(value, t)
+    else setDraft(value)
+    setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => {
+          if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() }
+          else if (e.key === 'Escape') { setDraft(value); setEditing(false) }
+        }}
+        spellCheck={false}
+        className="bg-transparent border-b border-white/40 outline-none text-xs font-mono text-white/90 px-0 text-center placeholder:text-white/25"
+        style={{ width: `${Math.max(draft.length, 3)}ch` }}
+      />
+    )
+  }
+
+  return (
+    <button
+      onClick={() => { setDraft(value); setEditing(true) }}
+      className="text-xs font-mono text-white/60 cursor-text rounded px-1.5 py-0.5 hover:bg-white/[0.05] hover:text-white transition-colors"
+    >
+      {value}
+    </button>
+  )
+}
 
 const inputCls = 'bg-white/[0.05] border border-white/10 rounded-lg px-2 py-1 text-xs text-white text-center outline-none focus:border-white/30'
 const dropdownCls = 'bg-white/[0.05] border border-white/10 rounded-lg px-2 py-1 text-xs text-white outline-none focus:border-white/30 font-mono cursor-pointer'
 const modalFieldCls = 'w-full bg-white/[0.05] border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none appearance-none cursor-pointer'
 
+const SHAPE_TYPES = [
+  { value: 'sharp',    label: 'Sharp' },
+  { value: 'rounded',  label: 'Rounded' },
+  { value: 'squircle', label: 'Squircle' },
+  { value: 'oval',     label: 'Oval' },
+]
+
 function radiusPreview(value, box) {
   return value === 9999 ? box / 2 : Math.min(value, box / 2)
+}
+
+function shapeStyle(entry, scaleEntry, box) {
+  const type = entry.type ?? 'rounded'
+  if (type === 'sharp') return { borderRadius: '0px' }
+  if (type === 'oval') return { borderRadius: '50%' }
+  if (type === 'squircle') {
+    const r = scaleEntry ? radiusPreview(scaleEntry.value, box) : box / 2
+    const s = entry.smoothing ?? 0.6
+    // Approximate iOS continuous corners via SVG clip-path
+    const pct = (r / box) * 100
+    const ctrl = pct * (1 - s * 0.6)
+    return {
+      clipPath: `path('M ${box * ctrl / 100} 0 Q 0 0 0 ${box * ctrl / 100} L 0 ${box - box * ctrl / 100} Q 0 ${box} ${box * ctrl / 100} ${box} L ${box - box * ctrl / 100} ${box} Q ${box} ${box} ${box} ${box - box * ctrl / 100} L ${box} ${box * ctrl / 100} Q ${box} 0 ${box - box * ctrl / 100} 0 Z')`,
+      borderRadius: undefined,
+    }
+  }
+  const r = scaleEntry ? radiusPreview(scaleEntry.value, box) : 0
+  return { borderRadius: `${r}px` }
 }
 
 // ── Radius scale card ─────────────────────────────────────────────────────────
 
 function RadiusCard({ entry, onValueChange, onRename, onRemove, isAnchor }) {
   const isPill = entry.value === 9999
+  const [hovered, setHovered] = useState(false)
+  const [morphKey, setMorphKey] = useState(0)
+
+  function handleMouseEnter() {
+    setHovered(true)
+    setMorphKey(k => k + 1)
+  }
+
+  const r = radiusPreview(entry.value, 66)
+
   return (
-    <div className="group relative rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
+    <div
+      className="group relative rounded-xl border border-white/[0.08] bg-white/[0.03] p-4"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={() => setHovered(false)}
+    >
       {/* Remove */}
       {!isAnchor && (
         <button
@@ -31,14 +114,22 @@ function RadiusCard({ entry, onValueChange, onRename, onRemove, isAnchor }) {
 
       {/* Name */}
       <div className="flex justify-center mb-3">
-        <StepNameEditor value={entry.step} onChange={n => onRename(entry.step, n)} />
+        <InlineNameEdit value={entry.step} onRename={onRename} />
       </div>
 
-      {/* Shape preview — full width, taller */}
-      <div
-        className="w-full h-24 bg-white/10 border border-white/10 mb-3"
-        style={{ borderRadius: `${radiusPreview(entry.value, 96)}px` }}
-      />
+      {/* Shape preview */}
+      <div className="h-[96px] flex items-center justify-center mb-3">
+        <div
+          key={morphKey}
+          className="bg-white/10 border border-white/10"
+          style={{
+            borderRadius: `${r}px`,
+            width: '66px',
+            height: '60px',
+            animation: hovered ? 'shape-morph-card 1.8s linear forwards' : 'none',
+          }}
+        />
+      </div>
 
       {/* Value — close to preview */}
       {isPill ? (
@@ -66,30 +157,74 @@ function RadiusCard({ entry, onValueChange, onRename, onRemove, isAnchor }) {
 
 // ── Semantic token row ────────────────────────────────────────────────────────
 
-function SemanticTokenRow({ entry, shapes, onUpdate, onRemove, index, total }) {
+function SemanticTokenRow({ entry, shapes, onUpdate, onUpdateType, onRemove, index, total }) {
   const [open, setOpen] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const [morphKey, setMorphKey] = useState(0)
   const scaleEntry = shapes.scale.find(s => s.step === entry.step)
   const radiusPx = scaleEntry ? scaleEntry.value : 0
+  const type = entry.type ?? 'rounded'
+
+  function handleMouseEnter() {
+    setHovered(true)
+    setMorphKey(k => k + 1)
+  }
+
+  // For squircle, use a border-radius approximation during animation
+  const animRadius = type === 'squircle'
+    ? `${Math.min(radiusPx === 9999 ? 45 : radiusPx, 22)}px`
+    : type === 'oval' ? '50%'
+    : type === 'sharp' ? '0px'
+    : `${radiusPreview(radiusPx, 45)}px`
 
   return (
-    <div className={clsx('flex items-center gap-4 px-5 py-3', index < total - 1 && 'border-b border-white/[0.04]')}>
-      <div
-        className="w-10 h-10 bg-white/10 border border-white/10 flex-shrink-0"
-        style={{ borderRadius: `${radiusPreview(radiusPx, 40)}px` }}
-      />
+    <div
+      className={clsx('flex items-center gap-4 px-6 py-4', index < total - 1 && 'border-b border-white/[0.04]')}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/* Preview — morphs on hover to show wide and tall containers */}
+      <div className="w-[92px] h-[72px] flex-shrink-0 flex items-center justify-center">
+        <div
+          key={morphKey}
+          className="bg-white/10 border border-white/10"
+          style={{
+            borderRadius: animRadius,
+            animation: hovered ? 'shape-morph 1.8s linear forwards' : 'none',
+            width: '45px',
+            height: '45px',
+          }}
+        />
+      </div>
       <div className="flex-1 min-w-0">
         <div className="text-xs font-mono text-white/80 truncate">{entry.id}</div>
         <div className="text-[11px] text-white/30 truncate">{entry.description}</div>
       </div>
-      <div className="text-xs text-white/30 font-mono">
-        {radiusPx === 9999 ? '∞' : `${radiusPx}px`}
+
+      {/* Value */}
+      <div className="w-10 text-right text-xs text-white/30 font-mono flex-shrink-0">
+        {type === 'oval' || type === 'sharp' ? '—' : radiusPx === 9999 ? '∞' : `${radiusPx}px`}
       </div>
 
-      {/* Mapping dropdown */}
-      <div className="relative">
+      {/* Type dropdown */}
+      <div className="relative w-[96px] flex-shrink-0">
+        <select
+          value={type}
+          onChange={e => onUpdateType(entry.id, e.target.value)}
+          className="w-full text-[11px] text-white/40 bg-transparent border border-white/10 hover:border-white/20 rounded-md pl-2 pr-6 py-1 font-mono outline-none cursor-pointer appearance-none"
+        >
+          {SHAPE_TYPES.map(t => (
+            <option key={t.value} value={t.value} style={{ background: '#1a1a1a' }}>{t.label}</option>
+          ))}
+        </select>
+        <ChevronDown size={10} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-white/30" />
+      </div>
+
+      {/* Step dropdown */}
+      <div className="relative w-[60px] flex-shrink-0">
         <button
           onClick={() => setOpen(v => !v)}
-          className="flex items-center gap-1.5 text-[11px] text-white/40 hover:text-white/70 transition-colors border border-white/10 hover:border-white/20 rounded-md px-2 py-1 font-mono"
+          className="w-full flex items-center justify-between gap-1 text-[11px] text-white/40 hover:text-white/70 transition-colors border border-white/10 hover:border-white/20 rounded-md px-2 py-1 font-mono"
         >
           {entry.step}
           <ChevronDown size={11} />
@@ -134,6 +269,7 @@ function SemanticTokenRow({ entry, shapes, onUpdate, onRemove, index, total }) {
 function ShapeTokenModal({ shapes, existingIds, onAdd, onClose }) {
   const [suffix, setSuffix] = useState('')
   const [step, setStep] = useState(shapes.scale.find(s => s.step === 'md')?.step ?? shapes.scale[0]?.step ?? '')
+  const [type, setType] = useState('rounded')
   const [desc, setDesc] = useState('')
 
   const trimmed = suffix.trim()
@@ -144,11 +280,15 @@ function ShapeTokenModal({ shapes, existingIds, onAdd, onClose }) {
   const scaleEntry = shapes.scale.find(s => s.step === step)
   const previewVal = scaleEntry ? scaleEntry.value : 0
 
+  const previewEntry = { type, smoothing: 0.6 }
+
   function handleAdd() {
     if (!canAdd) return
     onAdd({
       id,
       step,
+      type,
+      ...(type === 'squircle' ? { smoothing: 0.6 } : {}),
       description: desc.trim() || id,
       concept: { role: trimmed, isScale: false },
     })
@@ -172,7 +312,7 @@ function ShapeTokenModal({ shapes, existingIds, onAdd, onClose }) {
           <div className="rounded-lg bg-white/[0.02] border border-white/[0.06] py-6 flex justify-center">
             <div
               className="w-16 h-16 bg-white/10 border border-white/10"
-              style={{ borderRadius: `${radiusPreview(previewVal, 64)}px` }}
+              style={shapeStyle(previewEntry, scaleEntry, 45)}
             />
           </div>
 
@@ -188,6 +328,19 @@ function ShapeTokenModal({ shapes, existingIds, onAdd, onClose }) {
                 placeholder="popover"
                 className="flex-1 bg-transparent text-xs font-mono text-white outline-none placeholder-white/15"
               />
+            </div>
+          </div>
+
+          {/* Type */}
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-white/40 w-14 flex-shrink-0">Style</span>
+            <div className="relative flex-1">
+              <select value={type} onChange={e => setType(e.target.value)} className={modalFieldCls}>
+                {SHAPE_TYPES.map(t => (
+                  <option key={t.value} value={t.value} style={{ background: '#111' }}>{t.label}</option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/30 text-[10px]">▾</div>
             </div>
           </div>
 
@@ -282,6 +435,16 @@ export default function ShapesSection({ store }) {
     }))
   }
 
+  function updateSemanticType(id, newType) {
+    setShapes(prev => ({
+      ...prev,
+      semantic: prev.semantic.map(e => e.id === id
+        ? { ...e, type: newType, ...(newType === 'squircle' && !e.smoothing ? { smoothing: 0.6 } : {}) }
+        : e
+      ),
+    }))
+  }
+
   function addSemantic(token) {
     setShapes(prev => ({ ...prev, semantic: [...prev.semantic, token] }))
   }
@@ -294,6 +457,22 @@ export default function ShapesSection({ store }) {
 
   return (
     <div className="max-w-5xl mx-auto px-8 py-10">
+      <style>{`
+        @keyframes shape-morph {
+          0%   { width: 45px; height: 45px; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+          25%  { width: 85px; height: 30px; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+          50%  { width: 45px; height: 45px; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+          75%  { width: 30px; height: 70px; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+          100% { width: 45px; height: 45px; }
+        }
+        @keyframes shape-morph-card {
+          0%   { width: 66px; height: 60px; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+          25%  { width: 126px; height: 27px; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+          50%  { width: 66px; height: 60px; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+          75%  { width: 36px; height: 84px; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+          100% { width: 66px; height: 60px; }
+        }
+      `}</style>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white tracking-tight">Shapes</h1>
         <p className="text-sm text-white/40 mt-1">Corners, from razor-sharp to perfectly round.</p>
@@ -353,6 +532,7 @@ export default function ShapesSection({ store }) {
               total={shapes.semantic.length}
               shapes={shapes}
               onUpdate={updateSemanticMapping}
+              onUpdateType={updateSemanticType}
               onRemove={removeSemantic}
             />
           ))}

@@ -18,7 +18,25 @@
       "mcp__Claude_Preview__preview_start",
       "Bash(ln -sf \"/Users/tito/Documents/00_Cursor projects/Aveyo new UI/.node-runtime/node-v20.18.0-darwin-x64/bin/node\" /Users/tito/Documents/Luna/Projects/FoFa/node_modules/.bin/node)",
       "mcp__visualize__read_me",
-      "mcp__visualize__show_widget"
+      "mcp__visualize__show_widget",
+      "Bash(git fetch *)",
+      "Bash(git pull *)",
+      "Bash(git stash *)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(curl -s \"http://localhost:63216/src/sections/ShapesSection.jsx\")",
+      "Bash(awk 'NR>=120 && NR<=130')",
+      "Bash(awk 'NR==243 || NR==244 || NR==245 || NR==246 || NR==247')",
+      "Bash(curl -s \"http://localhost:63216/src/sections/ShapesSection.jsx?t=1782598800760\")",
+      "Bash(awk 'NR>=120 && NR<=135')",
+      "Bash(node --input-type=module)",
+      "Bash(gh api *)",
+      "Bash(python3 -c \"import sys,json,base64; d=json.load\\(sys.stdin\\); [print\\(base64.b64decode\\(f['content']\\).decode\\(\\)\\) for f in d if 'content' in f]\")",
+      "Bash(xargs -I{} gh api \"repos/leonxlnx/taste-skill/contents/{}\" --jq '.[].name')",
+      "Bash(python3 -c \"import sys,json,base64; d=json.load\\(sys.stdin\\); print\\(base64.b64decode\\(d['content']\\).decode\\(\\)\\)\")",
+      "Bash(python3 -m json.tool)"
     ]
   }
 }
